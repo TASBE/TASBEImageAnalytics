@@ -1,7 +1,7 @@
 from ij import IJ, ImagePlus, VirtualStack, Menus
 from ij.process import ImageConverter, AutoThresholder, ImageProcessor
 from ij.measure import ResultsTable
-from ij.plugin import ChannelSplitter
+from ij.plugin import ChannelSplitter, RGBStackMerge
 from ij.plugin.frame import RoiManager
 from ij.plugin.filter import ParticleAnalyzer
 from ij.measure import Measurements
@@ -41,14 +41,14 @@ def sort_nicely(l):
 
 # Input Params
 # TODO: should find a way to input besides hardcoding
-datasetName = 'A2'
-inputDir = '/home/nwalczak/workspace/elm/tmp/A2'
+datasetName = 'A10'
+inputDir = '/home/nwalczak/workspace/elm/tmp/A10'
 outputDir = '/home/nwalczak/workspace/elm/tmp/test_output'
-numChannels = 3;
+numChannels = 4;
 numZ = 1;
 noZInFile = True;
 
-chanLabel = ['brightfield', 'yellow', 'blue'];
+chanLabel = ['skip', 'brightfield', 'yellow', 'blue'];
 
 # Get currently selected image
 #imp = WindowManager.getCurrentImage()
@@ -101,13 +101,12 @@ for c in range(0, numChannels):
     for z in range(0, numZ):
         zStr =  'z%(depth)02d' % {"depth" : z};
         currIP = images[c][z];
-        currIP.setRoi(analysisRoi)
         currIP.show()
         # We need to get to a grayscale image, which will be done differently for different channels
         if (chanLabel[c] == "brightfield"):
             toGray = ImageConverter(currIP)
             toGray.convertToGray8()
-            minCircularity = 0.2 # We want to identify one big cell ball, so ignore small less circular objects
+            minCircularity = 0.1 # We want to identify one big cell ball, so ignore small less circular objects
             minSize = 40
         elif (chanLabel[c] == "blue"): # 
             imgChanns = ChannelSplitter.split(currIP);
@@ -115,14 +114,20 @@ for c in range(0, numChannels):
             minCircularity = 0.02
             minSize = 5
         elif (chanLabel[c] == "yellow"):
+            title = currIP.getTitle()
             imgChanns = ChannelSplitter.split(currIP);
+            RGBStackMerge.mergeStacks(imgChanns[0].getImageStack(), imgChanns[1].getImageStack(), None, True)
             currIp = imgChanns[1];
             minCircularity = 0.02
             minSize = 5
+        elif (chanLabel[c] == "skip"):
+            continue 
+        currIP.show()
         currIP.getProcessor().setAutoThreshold("Default", False, ImageProcessor.NO_LUT_UPDATE)
         IJ.run(currIP, "Convert to Mask", "")
         IJ.run(currIP, "Close-", "")
         currIP.show()
+        currIP.setRoi(analysisRoi)
         
         # Create a table to store the results
         table = ResultsTable()
@@ -136,7 +141,7 @@ for c in range(0, numChannels):
         # 5. The maximum size (idem)
         # 6. The minimum circularity of a particle
         # 7. The maximum circularity
-        paFlags = ParticleAnalyzer.IN_SITU_SHOW | ParticleAnalyzer.SHOW_OUTLINES | ParticleAnalyzer.ADD_TO_MANAGER | ParticleAnalyzer.INCLUDE_HOLES | ParticleAnalyzer.EXCLUDE_EDGE_PARTICLES | ParticleAnalyzer.SHOW_ROI_MASKS
+        paFlags = ParticleAnalyzer.IN_SITU_SHOW | ParticleAnalyzer.SHOW_OUTLINES | ParticleAnalyzer.ADD_TO_MANAGER | ParticleAnalyzer.EXCLUDE_EDGE_PARTICLES | ParticleAnalyzer.SHOW_ROI_MASKS
         pa = ParticleAnalyzer(paFlags, Measurements.AREA, table, minSize, Double.POSITIVE_INFINITY, minCircularity, 1.0)
         #pa.setHideOutputImage(True)
 
@@ -157,6 +162,7 @@ for c in range(0, numChannels):
         areas.append(table.getColumn(0))
     
 resultsFile = open(os.path.join(outputDir, datasetName + "results.txt"), "w")
+resultsFile.write("frame, brightfield area, yellow area, blue area, percent yellow, percent blue, classification \n")
 for c in range(0, numChannels) :
     area = 0;
     if (chanLabel[c] == "brightfield"):
@@ -168,11 +174,11 @@ for c in range(0, numChannels) :
     elif (chanLabel[c] == "yellow"):
         area = sum(areas[c])
         yellowArea = area
-    resultsFile.write("%s area: %d \n" % (chanLabel[c], area))
+    elif (chanLabel[c] == "skip"):
+        continue 
 percentBlue = blueArea / totalArea
-percentyellow = yellowArea / totalArea
-resultsFile.write("Percent blue area: %0.4f \n" % percentBlue)
-resultsFile.write("Percent yellow area: %0.4f \n" % percentyellow)
+percentYellow = yellowArea / totalArea
+resultsFile.write("%d, %d, %d, %d, %0.4f, %0.4f \n" % (1, totalArea, yellowArea, blueArea, percentYellow, percentBlue))
 resultsFile.close()
 
 cmds = Menus.getCommands()
