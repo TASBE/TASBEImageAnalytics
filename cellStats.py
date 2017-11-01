@@ -8,10 +8,7 @@ from ij.measure import Measurements
 from ij.gui import Roi
 
 from java.lang import Double
-from java.awt import Color
-
 import os, glob, re, time
-
 
 #
 # Stackoverflow code for numerically sorting strings
@@ -87,6 +84,10 @@ def main():
             if datasetName == dsNames[i] :
                 dsImgFiles.append(imgFiles[i])
 
+        datasetPath = os.path.join(outputDir, datasetName)
+        if not os.path.exists(datasetPath):
+            os.mkdir(datasetPath)
+            
         start = time.time()
         dsResults.append(datasetName + ", " + processDataset(datasetName, dsImgFiles))
         end = time.time()
@@ -113,6 +114,8 @@ def processDataset(datasetName, imgFiles):
     global numZ;
     global noZInFile;
     global chanLabel;
+    
+    datasetPath = os.path.join(outputDir, datasetName)
     
     firstImage = IJ.openImage(imgFiles[0]);
     imgWidth = firstImage.getWidth();
@@ -208,36 +211,47 @@ def processDataset(datasetName, imgFiles):
             #    r.setStrokeWidth(2)
             
             #outImg = pa.getOutputImage()
-            IJ.saveAs('png', os.path.join(outputDir, "Segmentation_" + datasetName + "_" + zStr + "_" + chanStr + "_particles.png"))
+            IJ.saveAs('png', os.path.join(datasetPath, "Segmentation_" + datasetName + "_" + zStr + "_" + chanStr + "_particles.png"))
     
             # The measured areas are listed in the first column of the results table, as a float array:
             areas.append(table.getColumn(0))
             currIP.hide()
         
-    resultsFile = open(os.path.join(outputDir, datasetName + "results.txt"), "w")
+    resultsFile = open(os.path.join(datasetPath, datasetName + "_results.txt"), "w")
     resultsFile.write("frame, brightfield area, yellow area, blue area, percent yellow, percent blue, classification \n")
     for c in range(0, numChannels) :
+        chanStr = '_ch%(channel)02d_' % {"channel" : c};
         area = 0;
+        writeArea = False
         if (chanLabel[c] == "brightfield"):
             if not areas[c] :
                 area = 0;
             else:
                 area = max(areas[c])
+                writeArea = True
             totalArea = area
+           
         elif (chanLabel[c] == "blue"): #
             if not areas[c] :
                 area = 0;
             else:
                 area = sum(areas[c]) 
+                writeArea = True
             blueArea = area
         elif (chanLabel[c] == "yellow"):
             if not areas[c] :
                 area = 0;
             else:
                 area = sum(areas[c])
+                writeArea = True
             yellowArea = area
         elif (chanLabel[c] == "skip"):
             continue
+        if writeArea:
+            chanResultsFile = open(os.path.join(datasetPath, datasetName + chanStr + "areas.txt"), "w")
+            for area in areas[c] :
+                chanResultsFile.write("%d\n" % area)
+            chanResultsFile.close()  
     if totalArea == 0:
         percentBlue = 0
         percentYellow = 0
