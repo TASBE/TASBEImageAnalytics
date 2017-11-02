@@ -1,7 +1,7 @@
 from ij import IJ, ImagePlus, VirtualStack
-from ij.process import ImageConverter, ImageProcessor
+from ij.process import ImageConverter, ImageProcessor, ByteProcessor
 from ij.measure import ResultsTable
-from ij.plugin import ChannelSplitter, RGBStackMerge
+from ij.plugin import ChannelSplitter
 from ij.plugin.frame import RoiManager
 from ij.plugin.filter import ParticleAnalyzer
 from ij.measure import Measurements
@@ -9,6 +9,7 @@ from ij.gui import Roi
 
 from java.lang import Double
 import os, glob, re, time
+from jarray import zeros
 
 #
 # Stackoverflow code for numerically sorting strings
@@ -171,9 +172,16 @@ def processDataset(datasetName, imgFiles):
                 darkBackground = True
             elif (chanLabel[c] == "yellow"):
                 title = currIP.getTitle()
-                imgChanns = ChannelSplitter.split(currIP);
-                newStack = RGBStackMerge.mergeStacks(imgChanns[0].getImageStack(), imgChanns[1].getImageStack(), None, True)
-                currIP = ImagePlus(title, newStack)
+                # Create a new image that consists of the average of the red & green channels
+                width = currIP.getWidth();
+                height = currIP.getHeight();
+                newPix = ByteProcessor(width, height)
+                for x in range(0, width) :
+                    for y in range(0,height) :
+                        currPix = currIP.getPixel(x,y);
+                        newPix.putPixel(x, y, (currPix[0] + currPix[1]) / 2)
+                
+                currIP = ImagePlus(title, newPix)
                 minCircularity = 0.02
                 minSize = 5
                 darkBackground = True
@@ -182,6 +190,14 @@ def processDataset(datasetName, imgFiles):
                 continue 
             currIP.show()
             currIP.getProcessor().setAutoThreshold("Default", darkBackground, ImageProcessor.NO_LUT_UPDATE)
+            threshRange = currIP.getProcessor().getMaxThreshold() - currIP.getProcessor().getMinThreshold()
+            print "\tChannel %14s threshold:\t [%d, %d]\t range: %d" % (chanLabel[c],currIP.getProcessor().getMinThreshold(), currIP.getProcessor().getMaxThreshold(), threshRange)
+            if currIP.getType() != ImagePlus.GRAY8 :
+                print "\tChannel " + chanLabel[c] + " is not GRAY8, instead type is %d" % currIP.getType()
+            if threshRange > 230:
+                print "\t\tIgnored Objects due to threshold range!"
+                areas.append([])
+                continue 
             IJ.run(currIP, "Convert to Mask", "")
             IJ.run(currIP, "Close-", "")
             currIP.setRoi(analysisRoi)
