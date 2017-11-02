@@ -76,7 +76,8 @@ def main():
         toks = os.path.basename(filePath).split("_")
         dsNames.append(toks[2])
         
-    uniqueNames = set(dsNames)
+    uniqueNames = list(set(dsNames))
+    sort_nicely(uniqueNames)
     
     dsResults = []
     for datasetName in uniqueNames:
