@@ -50,8 +50,10 @@ def main():
     global noZInFile;
     global chanLabel;
 
-    inputDir = '/home/nwalczak/Resilio Sync/Resilio/polka_dots_repeat/plate1_not_overlayed'
-    outputDir = '/home/nwalczak/workspace/elm/tmp/test_output'
+    #inputDir = '/home/nwalczak/Resilio Sync/Resilio/polka_dots_repeat/plate1_not_overlayed'
+    #outputDir = '/home/nwalczak/workspace/elm/tmp/test_output_plate1'
+    inputDir = '/home/nwalczak/Resilio Sync/Resilio/polka_dots_repeat/plate3_non_overlayed'
+    outputDir = '/home/nwalczak/workspace/elm/tmp/test_output_plate3'
     numChannels = 4;
     numZ = 1;
     noZInFile = True;
@@ -162,7 +164,7 @@ def processDataset(datasetName, imgFiles):
             if (chanLabel[c] == "brightfield"):
                 toGray = ImageConverter(currIP)
                 toGray.convertToGray8()
-                minCircularity = 0.1 # We want to identify one big cell ball, so ignore small less circular objects
+                minCircularity = 0.02 # We want to identify one big cell ball, so ignore small less circular objects
                 minSize = 40
                 darkBackground = False
             elif (chanLabel[c] == "blue"): # 
