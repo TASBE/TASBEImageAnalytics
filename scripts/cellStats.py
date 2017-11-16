@@ -1,4 +1,4 @@
-from ij import IJ, ImagePlus, VirtualStack
+from ij import IJ, ImagePlus, VirtualStack, WindowManager
 from ij.process import ImageConverter, ImageProcessor, ByteProcessor
 from ij.measure import ResultsTable
 from ij.plugin import ChannelSplitter
@@ -48,58 +48,33 @@ def printUsage():
 #
 #
 ####
-def main():
+def main(inputDir, outputDir):
     # Input Params
     # TODO: should find a way to input besides hardcoding
-    global inputDir;
-    global outputDir;
     global numChannels;
     global numZ;
     global noZInFile;
     global chanLabel;
 
-    numChannels = 4;
-    numZ = 1;
-    noZInFile = True;
-    chanLabel = ['skip', 'brightfield', 'yellow', 'blue'];
-
-    argc = len(sys.argv) - 1
-    if not argc == 2:
-        print "Expected 2 arguments, received " + str(argc) + "!"
-        printUsage()
-        quit(1)
-
-    #inputDir = '/home/nwalczak/Resilio Sync/Resilio/polka_dots_repeat/plate1_not_overlayed'
-    #outputDir = '/home/nwalczak/workspace/elm/tmp/test_output_plate1'
-    #inputDir = '/home/nwalczak/Resilio Sync/Resilio/polka_dots_repeat/plate3_non_overlayed'
-    #outputDir = '/home/nwalczak/workspace/elm/tmp/test_output_plate3'
-    inputDir = sys.argv[1]
-    outputDir = sys.argv[2]
     print "Processing input dir " + inputDir;
     print "Outputting in " + outputDir;
 
-    # Get currently selected image
-    #imp = WindowManager.getCurrentImage()
-    #imp = IJ.openImage('http://fiji.sc/samples/FakeTracks.tif')
-    #fo = FolderOpener()
-    
-    
     imgFiles = glob.glob(os.path.join(inputDir, "*.tif"))
     # Ensure we have tifs
     if (len(imgFiles) < 1):
         print "No tif files found in input directory!  Input dir: " + inputDir
         quit()
-    
+
     sort_nicely(imgFiles)
-    
+
     dsNames = []
     for filePath in imgFiles:
         toks = os.path.basename(filePath).split("_")
         dsNames.append(toks[2])
-        
+
     uniqueNames = list(set(dsNames))
     sort_nicely(uniqueNames)
-    
+
     dsResults = []
     for datasetName in uniqueNames:
         dsImgFiles = [];
@@ -112,10 +87,10 @@ def main():
             os.mkdir(datasetPath)
             
         start = time.time()
-        dsResults.append(datasetName + ", " + processDataset(datasetName, dsImgFiles))
+        dsResults.append(datasetName + ", " + processDataset(inputDir, outputDir, datasetName, dsImgFiles))
         end = time.time()
         print("Processed datset " + datasetName + " in " + str(end - start) + " s")
-        
+
     resultsFile = open(os.path.join(outputDir, "AllResults.csv"), "w")
     resultsFile.write("dataset, frame, brightfield area, yellow area, blue area, percent yellow, percent blue, classification \n")
     for result in dsResults:
@@ -130,9 +105,7 @@ def main():
 #
 #
 ####
-def processDataset(datasetName, imgFiles):
-    global inputDir;
-    global outputDir;
+def processDataset(inputDir, outputDir, datasetName, imgFiles):
     global numChannels;
     global numZ;
     global noZInFile;
@@ -210,7 +183,8 @@ def processDataset(datasetName, imgFiles):
             elif (chanLabel[c] == "skip"):
                 areas.append([])
                 continue 
-            currIP.show()
+            WindowManager.setTempCurrentImage(currIP);
+            #currIP.show()
             currIP.getProcessor().setAutoThreshold("Default", darkBackground, ImageProcessor.NO_LUT_UPDATE)
             threshRange = currIP.getProcessor().getMaxThreshold() - currIP.getProcessor().getMinThreshold()
             print "\tChannel %14s threshold:\t [%d, %d]\t range: %d" % (chanLabel[c],currIP.getProcessor().getMinThreshold(), currIP.getProcessor().getMaxThreshold(), threshRange)
@@ -227,7 +201,7 @@ def processDataset(datasetName, imgFiles):
             # Create a table to store the results
             table = ResultsTable()
             # Create a hidden ROI manager, to store a ROI for each blob or cell
-            roim = RoiManager(True)
+            #roim = RoiManager(True)
             # Create a ParticleAnalyzer, with arguments:
             # 1. options (could be SHOW_ROI_MASKS, SHOW_OUTLINES, SHOW_MASKS, SHOW_NONE, ADD_TO_MANAGER, and others; combined with bitwise-or)
             # 2. measurement options (see [http://imagej.net/developer/api/ij/measure/Measurements.html Measurements])
@@ -236,7 +210,7 @@ def processDataset(datasetName, imgFiles):
             # 5. The maximum size (idem)
             # 6. The minimum circularity of a particle
             # 7. The maximum circularity
-            paFlags = ParticleAnalyzer.IN_SITU_SHOW | ParticleAnalyzer.SHOW_OUTLINES | ParticleAnalyzer.ADD_TO_MANAGER | ParticleAnalyzer.EXCLUDE_EDGE_PARTICLES | ParticleAnalyzer.SHOW_ROI_MASKS | ParticleAnalyzer.CLEAR_WORKSHEET
+            paFlags = ParticleAnalyzer.IN_SITU_SHOW | ParticleAnalyzer.SHOW_OUTLINES | ParticleAnalyzer.EXCLUDE_EDGE_PARTICLES | ParticleAnalyzer.SHOW_ROI_MASKS | ParticleAnalyzer.CLEAR_WORKSHEET
             pa = ParticleAnalyzer(paFlags, Measurements.AREA, table, minSize, Double.POSITIVE_INFINITY, minCircularity, 1.0)
             #pa.setHideOutputImage(True)
     
@@ -253,7 +227,7 @@ def processDataset(datasetName, imgFiles):
     
             # The measured areas are listed in the first column of the results table, as a float array:
             areas.append(table.getColumn(0))
-            currIP.hide()
+            #currIP.hide()
         
     resultsFile = open(os.path.join(datasetPath, datasetName + "_results.txt"), "w")
     resultsFile.write("frame, brightfield area, yellow area, blue area, percent yellow, percent blue, classification \n")
@@ -304,9 +278,33 @@ def processDataset(datasetName, imgFiles):
 ####
 #
 #
-####        
-if __name__ == "__main__":
-    start = time.time()
-    main()
-    end = time.time()
-    print("Processed all images in " + str(end - start) + " s")
+####
+# Checking for __main__ will cause running from ImageJ to fail        
+#if __name__ == "__main__":
+
+numChannels = 4;
+numZ = 1;
+noZInFile = True;
+chanLabel = ['skip', 'brightfield', 'yellow', 'blue'];
+
+#@String inputDir
+#@String outputDir
+
+# Check to see if inputDir/outputDir are both defined
+# They could be defined if running from ImageJ directly
+try:
+    inputDir
+    outputDir
+except NameError:
+    argc = len(sys.argv) - 1
+    if not argc == 2:
+        print "Expected 2 arguments, received " + str(argc) + "!"
+        printUsage()
+        quit(1)
+    inputDir = sys.argv[1]
+    outputDir = sys.argv[2]
+    
+start = time.time()
+main(inputDir, outputDir)
+end = time.time()
+print("Processed all images in " + str(end - start) + " s")
