@@ -8,8 +8,8 @@ from ij.measure import Measurements
 from ij.gui import Roi
 
 from java.lang import Double
-import os, glob, re, time
-from jarray import zeros
+import os, glob, re, time, sys
+#from jarray import zeros
 
 #
 # Stackoverflow code for numerically sorting strings
@@ -35,6 +35,14 @@ def sort_nicely(l):
 #
 #
 #
+def printUsage():
+    global numChannels;
+    global numZ;
+    
+    print "This script will read tif files from an input directory and compute statistics on the cell images."
+    print "The directory is assumed to contain " + str(numChannels) + " channels and " + str(numZ) + " Z slice(s)."
+    print "Usage: "
+    print "<inputDir> <outputDir>"
     
 ####
 #
@@ -50,15 +58,26 @@ def main():
     global noZInFile;
     global chanLabel;
 
-    #inputDir = '/home/nwalczak/Resilio Sync/Resilio/polka_dots_repeat/plate1_not_overlayed'
-    #outputDir = '/home/nwalczak/workspace/elm/tmp/test_output_plate1'
-    inputDir = '/home/nwalczak/Resilio Sync/Resilio/polka_dots_repeat/plate3_non_overlayed'
-    outputDir = '/home/nwalczak/workspace/elm/tmp/test_output_plate3'
     numChannels = 4;
     numZ = 1;
     noZInFile = True;
     chanLabel = ['skip', 'brightfield', 'yellow', 'blue'];
-    
+
+    argc = len(sys.argv) - 1
+    if not argc == 2:
+        print "Expected 2 arguments, received " + str(argc) + "!"
+        printUsage()
+        quit(1)
+
+    #inputDir = '/home/nwalczak/Resilio Sync/Resilio/polka_dots_repeat/plate1_not_overlayed'
+    #outputDir = '/home/nwalczak/workspace/elm/tmp/test_output_plate1'
+    #inputDir = '/home/nwalczak/Resilio Sync/Resilio/polka_dots_repeat/plate3_non_overlayed'
+    #outputDir = '/home/nwalczak/workspace/elm/tmp/test_output_plate3'
+    inputDir = sys.argv[1]
+    outputDir = sys.argv[2]
+    print "Processing input dir " + inputDir;
+    print "Outputting in " + outputDir;
+
     # Get currently selected image
     #imp = WindowManager.getCurrentImage()
     #imp = IJ.openImage('http://fiji.sc/samples/FakeTracks.tif')
