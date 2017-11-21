@@ -12,7 +12,7 @@ pipeline {
 					git url: 'git@superior.bbn.com:ELM-test'
 				}
 				dir('build') {
-	                deleteDir
+	                deleteDir()
 				}
                 dir ('build') { // dir cmd creates dir if it doesn't exist
 		            // Extract Fiji
