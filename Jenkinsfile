@@ -10,8 +10,12 @@ pipeline {
                 echo "NODE_NAME = ${env.NODE_NAME}"
                 echo "Checking out ELM-test repo..."
                 git url: "git@superior.bbn.com:ELM-test"
-                deleteDir('build')
-                dir ('build')
+                if (fileExists('build')) {
+                    dir('build') {
+						deleteDir
+					}	
+                }
+                dir ('build') // Dir command creates dir if it doesn't exist
                 // Extract Fiji
                 echo "Extracting FIJI...."
                 unarchive mapping: ['../extlib/fiji-linux64.zip': './']
