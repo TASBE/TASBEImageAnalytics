@@ -11,8 +11,12 @@ pipeline {
 				dir('testRepo') {
 					git url: 'git@superior.bbn.com:ELM-test'
 				}
-                deleteDir build
-                dir ('build')
+                if (fileExists('build')) {
+					dir('build') {
+		                deleteDir
+					}
+				}
+                dir ('build') // dir cmd creates dir if it doesn't exist
                 // Extract Fiji
                 unarchive mapping: ['../extlib/fiji-linux64.zip': './']
             }
