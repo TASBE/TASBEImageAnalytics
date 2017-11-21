@@ -8,16 +8,12 @@ pipeline {
         stage('Init') { // Setup dependencies
             steps {
                 echo "NODE_NAME = ${env.NODE_NAME}"
-                echo "Checking out ELM-test repo..."
-                git url: "git@superior.bbn.com:ELM-test"
-                if (fileExists('build')) {
-                    dir('build') {
-						deleteDir
-					}	
-                }
-                dir ('build') // Dir command creates dir if it doesn't exist
+				dir('testRepo') {
+					git url: 'git@superior.bbn.com:ELM-test'
+				}
+                deleteDir build
+                dir ('build')
                 // Extract Fiji
-                echo "Extracting FIJI...."
                 unarchive mapping: ['../extlib/fiji-linux64.zip': './']
             }
         }
@@ -27,12 +23,14 @@ pipeline {
         stage('Test') {
             steps {
                 echo "Beginning tests..."
-                timestamps {
-                  timeout(time: 2, unit: 'HOURS') {
-                    dir ('tests')
-                    sh "./cellStatsTest.sh"
-                } // timeout
-                } // timestamps
+	            dir('testRepo') {
+		            timestamps {
+		            	timeout(time: 2, unit: 'HOURS') {
+		            	    dir ('tests')
+		            	    sh "./cellStatsTest.sh"
+		            	} // timeout
+		            } // timestamps
+				} // dir
             } // steps
         } // stage build & test
                 
