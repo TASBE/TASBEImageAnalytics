@@ -10,7 +10,7 @@ pipeline {
                 echo "NODE_NAME = ${env.NODE_NAME}"
                 echo "Checking out ELM-test repo..."
                 git url: "git@superior.bbn.com:ELM-test"
-                deleteDir build
+                deleteDir('build')
                 dir ('build')
                 // Extract Fiji
                 echo "Extracting FIJI...."
@@ -21,8 +21,8 @@ pipeline {
         // No build stage at this time, as everything is scripts
 
         stage('Test') {
-            echo "Beginning tests..."
             steps {
+                echo "Beginning tests..."
                 timestamps {
                   timeout(time: 2, unit: 'HOURS') {
                     dir ('tests')
