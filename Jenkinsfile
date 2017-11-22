@@ -35,7 +35,9 @@ pipeline {
 		
 	post {
 		always {
-					
+
+			junit "**/tests/**/*.xml"
+
 			emailext recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'CulpritsRecipientProvider']], 
 					to: 'elm-team-commits@rlist.app.ray.com',
 					subject: '$DEFAULT_SUBJECT', 
