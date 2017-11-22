@@ -2,7 +2,7 @@
 
 pipeline {
 
-	agent {'master', 'bum-mac3'}
+	agent { label 'master', label 'bum-mac3'}
 
 	stages {
 		stage('Init') { // Setup dependencies
