@@ -22,8 +22,9 @@ pipeline {
 				dir('testRepo') {
 					timestamps {
 						timeout(time: 2, unit: 'HOURS') {
-							dir ('tests')
-							sh "#!/bin/sh -xe\n ./cellStatsTest.sh"
+							dir ('tests') {
+								sh "#!/bin/sh -xe\n ./cellStatsTest.sh"
+							}
 						} // timeout
 					} // timestamps
 				} // dir
