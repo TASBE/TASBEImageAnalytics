@@ -2,49 +2,49 @@
 
 pipeline {
 
-    agent any
+	agent master
 
-    stages {
-        stage('Init') { // Setup dependencies
-            steps {
-                echo "NODE_NAME = ${env.NODE_NAME}"
+	stages {
+		stage('Init') { // Setup dependencies
+			steps {
+				echo "NODE_NAME = ${env.NODE_NAME}"
 				dir('testRepo') {
 					git url: 'git@superior.bbn.com:ELM-test'
 					dir('build') {
-		                deleteDir()
+						deleteDir()
 					}
-	                dir ('build') // dir cmd creates dir if it doesn't exist
-			        // Extract Fiji
-			        unarchive mapping: ['extlib/fiji-linux64.zip': 'build']
+					dir ('build') // dir cmd creates dir if it doesn't exist
+					// Extract Fiji
+					unarchive mapping: ['extlib/fiji-linux64.zip': 'build']
 				}
-            }
-        }
+			}
+		}
 
-        // No build stage at this time, as everything is scripts
+		// No build stage at this time, as everything is scripts
 
-        stage('Test') {
-            steps {
-                echo "Beginning tests..."
-	            dir('testRepo') {
-		            timestamps {
-		            	timeout(time: 2, unit: 'HOURS') {
-		            	    dir ('tests')
-		            	    sh "./cellStatsTest.sh"
-		            	} // timeout
-		            } // timestamps
+		stage('Test') {
+			steps {
+				echo "Beginning tests..."
+				dir('testRepo') {
+					timestamps {
+						timeout(time: 2, unit: 'HOURS') {
+							dir ('tests')
+							sh "./cellStatsTest.sh"
+						} // timeout
+					} // timestamps
 				} // dir
-            } // steps
-        } // stage build & test
-                
-    } // stages
-        
-    post {
-        always {
-                    
-            emailext recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'CulpritsRecipientProvider']], 
-                    to: 'elm-team-commits@rlist.app.ray.com',
-                    subject: '$DEFAULT_SUBJECT', 
-                    body: '''${PROJECT_NAME} - Build # ${BUILD_NUMBER} - ${BUILD_STATUS}
+			} // steps
+		} // stage build & test
+				
+	} // stages
+		
+	post {
+		always {
+					
+			emailext recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'CulpritsRecipientProvider']], 
+					to: 'elm-team-commits@rlist.app.ray.com',
+					subject: '$DEFAULT_SUBJECT', 
+					body: '''${PROJECT_NAME} - Build # ${BUILD_NUMBER} - ${BUILD_STATUS}
 
 Changes:
 ${CHANGES}
@@ -59,7 +59,7 @@ ${BUILD_LOG, maxLines=50}
 
 '''
 
-        } // always
-    } // post
+		} // always
+	} // post
 
 } // pipeline
