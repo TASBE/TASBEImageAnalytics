@@ -5,17 +5,16 @@ pipeline {
 	agent { label 'linux||mac'}
 
 	stages {
-		stage('Init') { // Setup dependencies
+		stage('Build') { // Setup dependencies
 			steps {
 				echo "NODE_NAME = ${env.NODE_NAME}"
+				// Get the test repo and ensure it's setup
 				dir('testRepo') {
 					git url: 'git@superior.bbn.com:ELM-test'
-					sh 'make'
+					sh '#!/bin/sh -xe\n make'
 				}
 			}
 		}
-
-		// No build stage at this time, as everything is scripts
 
 		stage('Test') {
 			steps {
@@ -24,7 +23,7 @@ pipeline {
 					timestamps {
 						timeout(time: 2, unit: 'HOURS') {
 							dir ('tests')
-							sh "./cellStatsTest.sh"
+							sh "#!/bin/sh -xe\n ./cellStatsTest.sh"
 						} // timeout
 					} // timestamps
 				} // dir
