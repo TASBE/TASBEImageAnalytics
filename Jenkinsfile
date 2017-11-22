@@ -13,10 +13,9 @@ pipeline {
 					dir('build') {
 		                deleteDir()
 					}
-	                dir ('build') { // dir cmd creates dir if it doesn't exist
-				        // Extract Fiji
-				        unarchive mapping: ['../extlib/fiji-linux64.zip': './']
-	                }
+	                dir ('build') // dir cmd creates dir if it doesn't exist
+			        // Extract Fiji
+			        unarchive mapping: ['extlib/fiji-linux64.zip': 'build']
 				}
             }
         }
