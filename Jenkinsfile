@@ -2,6 +2,8 @@
 
 pipeline {
 
+	options { buildDiscarder(logRotator(numToKeepStr: '5')) }
+
 	agent { label 'linux||mac'}
 
 	stages {
