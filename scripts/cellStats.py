@@ -59,18 +59,22 @@ def main(inputDir, outputDir):
     print "Processing input dir " + inputDir;
     print "Outputting in " + outputDir;
 
+    # Get all images in the input dir
     imgFiles = glob.glob(os.path.join(inputDir, "*.tif"))
     # Ensure we have tifs
     if (len(imgFiles) < 1):
         print "No tif files found in input directory!  Input dir: " + inputDir
         quit()
 
+    # Sort filenames so they are in order by z and ch
     sort_nicely(imgFiles)
 
     dsNames = []
+    # TODO: Parameterize
+    dsNameIdx = 4;
     for filePath in imgFiles:
         toks = os.path.basename(filePath).split("_")
-        dsNames.append(toks[2])
+        dsNames.append(toks[dsNameIdx])
 
     uniqueNames = list(set(dsNames))
     sort_nicely(uniqueNames)
@@ -144,7 +148,9 @@ def processDataset(inputDir, outputDir, datasetName, imgFiles):
     
     # Process images
     # We need to avoid the scale bar in the bottom of the image, so set a roi that doesn't include it
-    analysisRoi = Roi(0,0,512,480)
+    # TODO - Optionize
+    #analysisRoi = Roi(0,0,512,480)
+    analysisRoi = Roi(0,0,1024,980)
     areas = []
     for c in range(0, numChannels):
         chanStr = 'ch%(channel)02d' % {"channel" : c};
@@ -285,7 +291,8 @@ def processDataset(inputDir, outputDir, datasetName, imgFiles):
 numChannels = 4;
 numZ = 1;
 noZInFile = True;
-chanLabel = ['skip', 'brightfield', 'yellow', 'blue'];
+#chanLabel = ['skip', 'brightfield', 'yellow', 'blue'];
+chanLabel = ['skip', 'yellow', 'blue', 'brightfield'];
 
 #@String inputDir
 #@String outputDir
