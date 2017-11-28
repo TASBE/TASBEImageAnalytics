@@ -48,33 +48,27 @@ def printUsage():
 #
 #
 ####
-def main(inputDir, outputDir):
+def main(cfg):
     # Input Params
     # TODO: should find a way to input besides hardcoding
-    global numChannels;
-    global numZ;
-    global noZInFile;
-    global chanLabel;
 
-    print "Processing input dir " + inputDir;
-    print "Outputting in " + outputDir;
+    print "Processing input dir " + cfg.inputDir;
+    print "Outputting in " + cfg.outputDir;
 
     # Get all images in the input dir
-    imgFiles = glob.glob(os.path.join(inputDir, "*.tif"))
+    imgFiles = glob.glob(os.path.join(cfg.inputDir, "*.tif"))
     # Ensure we have tifs
     if (len(imgFiles) < 1):
-        print "No tif files found in input directory!  Input dir: " + inputDir
+        print "No tif files found in input directory!  Input dir: " + cfg.inputDir
         quit()
 
     # Sort filenames so they are in order by z and ch
     sort_nicely(imgFiles)
 
     dsNames = []
-    # TODO: Parameterize
-    dsNameIdx = 4;
     for filePath in imgFiles:
         toks = os.path.basename(filePath).split("_")
-        dsNames.append(toks[dsNameIdx])
+        dsNames.append(toks[cfg.dsNameIdx])
 
     uniqueNames = list(set(dsNames))
     sort_nicely(uniqueNames)
@@ -86,16 +80,16 @@ def main(inputDir, outputDir):
             if datasetName == dsNames[i] :
                 dsImgFiles.append(imgFiles[i])
 
-        datasetPath = os.path.join(outputDir, datasetName)
+        datasetPath = os.path.join(cfg.outputDir, datasetName)
         if not os.path.exists(datasetPath):
             os.mkdir(datasetPath)
             
         start = time.time()
-        dsResults.append(datasetName + ", " + processDataset(inputDir, outputDir, datasetName, dsImgFiles))
+        dsResults.append(datasetName + ", " + processDataset(cfg, datasetName, dsImgFiles))
         end = time.time()
         print("Processed datset " + datasetName + " in " + str(end - start) + " s")
 
-    resultsFile = open(os.path.join(outputDir, "AllResults.csv"), "w")
+    resultsFile = open(os.path.join(cfg.outputDir, "AllResults.csv"), "w")
     resultsFile.write("dataset, frame, brightfield area, yellow area, blue area, percent yellow, percent blue, classification \n")
     for result in dsResults:
         resultsFile.write(result);
@@ -109,37 +103,32 @@ def main(inputDir, outputDir):
 #
 #
 ####
-def processDataset(inputDir, outputDir, datasetName, imgFiles):
-    global numChannels;
-    global numZ;
-    global noZInFile;
-    global chanLabel;
-    
-    datasetPath = os.path.join(outputDir, datasetName)
+def processDataset(cfg, datasetName, imgFiles):
+    datasetPath = os.path.join(cfg.outputDir, datasetName)
     
     firstImage = IJ.openImage(imgFiles[0]);
     imgWidth = firstImage.getWidth();
     imgHeight = firstImage.getHeight();
 
     # Count how many images we have for each channel/Z slice
-    imgFileCats = [[[] for z in range(numZ)] for c in range(numChannels)]
-    for c in range(0, numChannels):
+    imgFileCats = [[[] for z in range(cfg.numZ)] for c in range(cfg.numChannels)]
+    for c in range(0, cfg.numChannels):
         chanStr = 'ch%(channel)02d' % {"channel" : c};
-        for z in range(0, numZ):
+        for z in range(0, cfg.numZ):
             zStr =  'z%(depth)02d' % {"depth" : z};
             for imgPath in imgFiles:
                 fileName = os.path.basename(imgPath)
-                if chanStr in fileName and (noZInFile or zStr in fileName):
+                if chanStr in fileName and (cfg.noZInFile or zStr in fileName):
                     imgFileCats[c][z].append(fileName)
     
     # Load all images
-    images = [[0 for z in range(numZ)] for c in range(numChannels)]
-    for c in range(0, numChannels):
-        for z in range(0, numZ):
+    images = [[0 for z in range(cfg.numZ)] for c in range(cfg.numChannels)]
+    for c in range(0, cfg.numChannels):
+        for z in range(0, cfg.numZ):
             if not imgFileCats[c][z]:
                 continue;
             
-            imSeq = VirtualStack(imgWidth, imgHeight, firstImage.getProcessor().getColorModel(), inputDir)
+            imSeq = VirtualStack(imgWidth, imgHeight, firstImage.getProcessor().getColorModel(), cfg.inputDir)
             for fileName in imgFileCats[c][z]:
                 imSeq.addSlice(fileName);
             images[c][z] = ImagePlus()
@@ -147,31 +136,27 @@ def processDataset(inputDir, outputDir, datasetName, imgFiles):
             images[c][z].setTitle(datasetName + ", channel " + str(c) + ", z " + str(z))
     
     # Process images
-    # We need to avoid the scale bar in the bottom of the image, so set a roi that doesn't include it
-    # TODO - Optionize
-    #analysisRoi = Roi(0,0,512,480)
-    analysisRoi = Roi(0,0,1024,980)
     areas = []
-    for c in range(0, numChannels):
+    for c in range(0, cfg.numChannels):
         chanStr = 'ch%(channel)02d' % {"channel" : c};
-        for z in range(0, numZ):
+        for z in range(0, cfg.numZ):
             zStr =  'z%(depth)02d' % {"depth" : z};
             currIP = images[c][z];
             #currIP.show()
             # We need to get to a grayscale image, which will be done differently for different channels
-            if (chanLabel[c] == "brightfield"):
+            if (cfg.chanLabel[c] == "brightfield"):
                 toGray = ImageConverter(currIP)
                 toGray.convertToGray8()
                 minCircularity = 0.02 # We want to identify one big cell ball, so ignore small less circular objects
                 minSize = 40
                 darkBackground = False
-            elif (chanLabel[c] == "blue"): # 
+            elif (cfg.chanLabel[c] == "blue"): # 
                 imgChanns = ChannelSplitter.split(currIP);
                 currIP = imgChanns[2];
                 minCircularity = 0.02
                 minSize = 5
                 darkBackground = True
-            elif (chanLabel[c] == "yellow"):
+            elif (cfg.chanLabel[c] == "yellow"):
                 title = currIP.getTitle()
                 # Create a new image that consists of the average of the red & green channels
                 width = currIP.getWidth();
@@ -186,36 +171,29 @@ def processDataset(inputDir, outputDir, datasetName, imgFiles):
                 minCircularity = 0.02
                 minSize = 5
                 darkBackground = True
-            elif (chanLabel[c] == "skip"):
+            elif (cfg.chanLabel[c] == "skip"):
                 areas.append([])
                 continue 
             WindowManager.setTempCurrentImage(currIP);
             #currIP.show()
             currIP.getProcessor().setAutoThreshold("Default", darkBackground, ImageProcessor.NO_LUT_UPDATE)
             threshRange = currIP.getProcessor().getMaxThreshold() - currIP.getProcessor().getMinThreshold()
-            print "\tChannel %14s threshold:\t [%d, %d]\t range: %d" % (chanLabel[c],currIP.getProcessor().getMinThreshold(), currIP.getProcessor().getMaxThreshold(), threshRange)
+            print "\tChannel %14s threshold:\t [%d, %d]\t range: %d" % (cfg.chanLabel[c],currIP.getProcessor().getMinThreshold(), currIP.getProcessor().getMaxThreshold(), threshRange)
             if currIP.getType() != ImagePlus.GRAY8 :
-                print "\tChannel " + chanLabel[c] + " is not GRAY8, instead type is %d" % currIP.getType()
+                print "\tChannel " + cfg.chanLabel[c] + " is not GRAY8, instead type is %d" % currIP.getType()
             if threshRange > 230:
                 print "\t\tIgnored Objects due to threshold range!"
                 areas.append([])
                 continue 
             IJ.run(currIP, "Convert to Mask", "")
             IJ.run(currIP, "Close-", "")
-            currIP.setRoi(analysisRoi)
+            currIP.setRoi(cfg.analysisRoi)
             
             # Create a table to store the results
             table = ResultsTable()
             # Create a hidden ROI manager, to store a ROI for each blob or cell
             #roim = RoiManager(True)
-            # Create a ParticleAnalyzer, with arguments:
-            # 1. options (could be SHOW_ROI_MASKS, SHOW_OUTLINES, SHOW_MASKS, SHOW_NONE, ADD_TO_MANAGER, and others; combined with bitwise-or)
-            # 2. measurement options (see [http://imagej.net/developer/api/ij/measure/Measurements.html Measurements])
-            # 3. a ResultsTable to store the measurements
-            # 4. The minimum size of a particle to consider for measurement
-            # 5. The maximum size (idem)
-            # 6. The minimum circularity of a particle
-            # 7. The maximum circularity
+            # Create a ParticleAnalyzer
             paFlags = ParticleAnalyzer.IN_SITU_SHOW | ParticleAnalyzer.SHOW_OUTLINES | ParticleAnalyzer.EXCLUDE_EDGE_PARTICLES | ParticleAnalyzer.SHOW_ROI_MASKS | ParticleAnalyzer.CLEAR_WORKSHEET
             pa = ParticleAnalyzer(paFlags, Measurements.AREA, table, minSize, Double.POSITIVE_INFINITY, minCircularity, 1.0)
             #pa.setHideOutputImage(True)
@@ -237,11 +215,11 @@ def processDataset(inputDir, outputDir, datasetName, imgFiles):
         
     resultsFile = open(os.path.join(datasetPath, datasetName + "_results.txt"), "w")
     resultsFile.write("frame, brightfield area, yellow area, blue area, percent yellow, percent blue, classification \n")
-    for c in range(0, numChannels) :
+    for c in range(0, cfg.numChannels) :
         chanStr = '_ch%(channel)02d_' % {"channel" : c};
         area = 0;
         writeArea = False
-        if (chanLabel[c] == "brightfield"):
+        if (cfg.chanLabel[c] == "brightfield"):
             if not areas[c] :
                 area = 0;
             else:
@@ -249,21 +227,21 @@ def processDataset(inputDir, outputDir, datasetName, imgFiles):
                 writeArea = True
             totalArea = area
            
-        elif (chanLabel[c] == "blue"): #
+        elif (cfg.chanLabel[c] == "blue"): #
             if not areas[c] :
                 area = 0;
             else:
                 area = sum(areas[c]) 
                 writeArea = True
             blueArea = area
-        elif (chanLabel[c] == "yellow"):
+        elif (cfg.chanLabel[c] == "yellow"):
             if not areas[c] :
                 area = 0;
             else:
                 area = sum(areas[c])
                 writeArea = True
             yellowArea = area
-        elif (chanLabel[c] == "skip"):
+        elif (cfg.chanLabel[c] == "skip"):
             continue
         if writeArea:
             chanResultsFile = open(os.path.join(datasetPath, datasetName + chanStr + "areas.txt"), "w")
@@ -281,6 +259,21 @@ def processDataset(inputDir, outputDir, datasetName, imgFiles):
     resultsFile.close()
     return resultsString
 
+class config:
+    numChannels = 4;
+    numZ = 1;
+    noZInFile = True;
+    #chanLabel = ['skip', 'brightfield', 'yellow', 'blue'];
+    chanLabel = ['skip', 'yellow', 'blue', 'brightfield'];
+    inputDir = '';
+    outputDir = '';
+    # We need to avoid the scale bar in the bottom of the image, so set a roi that doesn't include it
+    #analysisRoi = Roi(0,0,512,480)
+    analysisRoi = Roi(0,0,1024,980)
+    # Determines what index the dataset name is within the tokenized filename
+    dsNameIdx = 4;
+    
+    
 ####
 #
 #
@@ -288,11 +281,7 @@ def processDataset(inputDir, outputDir, datasetName, imgFiles):
 # Checking for __main__ will cause running from ImageJ to fail        
 #if __name__ == "__main__":
 
-numChannels = 4;
-numZ = 1;
-noZInFile = True;
-#chanLabel = ['skip', 'brightfield', 'yellow', 'blue'];
-chanLabel = ['skip', 'yellow', 'blue', 'brightfield'];
+cfg = config()
 
 #@String inputDir
 #@String outputDir
@@ -300,18 +289,19 @@ chanLabel = ['skip', 'yellow', 'blue', 'brightfield'];
 # Check to see if inputDir/outputDir are both defined
 # They could be defined if running from ImageJ directly
 try:
-    inputDir
-    outputDir
+    # Works if input/outputDir are already defined, as if in ImageJ
+    cfg.inputDir = inputDir
+    cfg.outputDir = outputDir
 except NameError:
     argc = len(sys.argv) - 1
     if not argc == 2:
         print "Expected 2 arguments, received " + str(argc) + "!"
         printUsage()
         quit(1)
-    inputDir = sys.argv[1]
-    outputDir = sys.argv[2]
+    cfg.inputDir = sys.argv[1]
+    cfg.outputDir = sys.argv[2]
     
 start = time.time()
-main(inputDir, outputDir)
+main(cfg)
 end = time.time()
 print("Processed all images in " + str(end - start) + " s")
