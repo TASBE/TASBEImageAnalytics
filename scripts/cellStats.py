@@ -103,7 +103,17 @@ def main(cfg):
         print("Processed datset " + datasetName + " in " + str(end - start) + " s")
 
     resultsFile = open(os.path.join(cfg.outputDir, "AllResults.csv"), "w")
-    resultsFile.write("dataset, frame, brightfield area, yellow area, blue area, percent yellow, percent blue, classification \n")
+    
+    outputChans = [];
+    for chan in cfg.chanLabel:
+        if not chan == "skip" and not chan == "brightfield":
+            outputChans.append(chan)
+    headerString = "frame, brightfield area, "
+    for chan in outputChans:
+        headerString += chan + " area, "
+        headerString += "percent " + chan + ", " 
+    headerString += "classification \n"
+    resultsFile.write(headerString)
     for result in dsResults:
         resultsFile.write(result);
     resultsFile.close()    
@@ -163,9 +173,14 @@ def processDataset(cfg, datasetName, imgFiles):
                 minCircularity = 0.02 # We want to identify one big cell ball, so ignore small less circular objects
                 minSize = 40
                 darkBackground = False
-            elif (cfg.chanLabel[c] == "blue"): # 
+            elif (cfg.chanLabel[c] == "blue") or (cfg.chanLabel[c] == "red") or (cfg.chanLabel[c] == "green"): #
+                chanIdx = 2
+                if (cfg.chanLabel[c] == "red"):
+                    chanIdx = 0
+                elif (cfg.chanLabel[c] == "green"):
+                    chanIdx = 1;
                 imgChanns = ChannelSplitter.split(currIP);
-                currIP = imgChanns[2];
+                currIP = imgChanns[chanIdx];
                 minCircularity = 0.02
                 minSize = 5
                 darkBackground = True
@@ -227,47 +242,55 @@ def processDataset(cfg, datasetName, imgFiles):
             #currIP.hide()
         
     resultsFile = open(os.path.join(datasetPath, datasetName + "_results.txt"), "w")
-    resultsFile.write("frame, brightfield area, yellow area, blue area, percent yellow, percent blue, classification \n")
+    outputChans = [];
+    for chan in cfg.chanLabel:
+        if not chan == "skip" and not chan == "brightfield":
+            outputChans.append(chan)
+    headerString = "frame, brightfield area, "
+    for chan in outputChans:
+        headerString += chan + " area, "
+        headerString += "percent " + chan + ", " 
+    headerString += "classification \n"
+    resultsFile.write(headerString);
+    channelAreas = dict() 
     for c in range(0, cfg.numChannels) :
         chanStr = '_ch%(channel)02d_' % {"channel" : c};
         area = 0;
         writeArea = False
+        # Handle brigthfield channel
         if (cfg.chanLabel[c] == "brightfield"):
             if not areas[c] :
                 area = 0;
             else:
                 area = max(areas[c])
                 writeArea = True
-            totalArea = area
-           
-        elif (cfg.chanLabel[c] == "blue"): #
+            channelAreas["totalArea"] = area
+        # Handle Fluorscent Channels   
+        elif (cfg.chanLabel[c] == "blue") or (cfg.chanLabel[c] == "red") or (cfg.chanLabel[c] == "green") or (cfg.chanLabel[c] == "yellow"): #
             if not areas[c] :
                 area = 0;
             else:
                 area = sum(areas[c]) 
                 writeArea = True
-            blueArea = area
-        elif (cfg.chanLabel[c] == "yellow"):
-            if not areas[c] :
-                area = 0;
-            else:
-                area = sum(areas[c])
-                writeArea = True
-            yellowArea = area
+            channelAreas[cfg.chanLabel[c]] = area
+        # Skip channel
         elif (cfg.chanLabel[c] == "skip"):
             continue
         if writeArea:
             chanResultsFile = open(os.path.join(datasetPath, datasetName + chanStr + "areas.txt"), "w")
-            for area in areas[c] :
-                chanResultsFile.write("%d\n" % area)
-            chanResultsFile.close()  
-    if totalArea == 0:
-        percentBlue = 0
-        percentYellow = 0
-    else:  
-        percentBlue = blueArea / totalArea
-        percentYellow = yellowArea / totalArea
-    resultsString = "%d,\t\t\t %d,\t\t %d,\t\t %d,\t\t %0.4f,\t\t %0.4f \n" % (1, totalArea, yellowArea, blueArea, percentYellow, percentBlue)
+            for a in areas[c] :
+                chanResultsFile.write("%d\n" % a)
+            chanResultsFile.close()
+
+    if channelAreas["totalArea"] == 0:
+        channelAreas["totalArea"] = 0.000000001
+
+    resultsString = "%d,\t\t\t %d," % (1, channelAreas["totalArea"])
+    for chan in outputChans:
+        resultsString += "\t\t %d," % channelAreas[chan]
+        resultsString += "\t\t %0.4f," % (channelAreas[chan] /  channelAreas["totalArea"])
+        
+    resultsString += "\n"   
     resultsFile.write(resultsString)
     resultsFile.close()
     return resultsString
