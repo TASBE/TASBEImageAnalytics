@@ -294,28 +294,26 @@ class config:
 # Checking for __main__ will cause running from ImageJ to fail        
 #if __name__ == "__main__":
 
-#@String cfgDir
+#@String cfgPath
 
-# Check to see if cfgDir is defined
+# Check to see if cfgPath is defined
 # They could be defined if running from ImageJ directly
 try:
-    cfgDir
+    cfgPath
 except NameError:
     argc = len(sys.argv) - 1
     if not argc == 1:
         print "Expected 1 argument, received " + str(argc) + "!"
         printUsage()
         quit(1)
-    cfgDir = sys.argv[1]
+    cfgPath = sys.argv[1]
 
 # Load the configuration file
-with open(cfgDir) as f:
-    cfgFile = f.read()
 cfgParser = ConfigParser.RawConfigParser(allow_no_value=True)
-cfgParser.readfp(io.BytesIO(cfgFile))
+rv = cfgParser.readfp(open(cfgPath))
 
 if not cfgParser.has_section("Config"):
-    print "Config file doesn't contain [Config] section!"
+    print "Config file doesn't contain [Config] section! Path: " + cfgPath;
     quit(1)
 
 cfg = config()
