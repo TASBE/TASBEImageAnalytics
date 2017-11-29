@@ -51,6 +51,7 @@ def printUsage():
     print "numZ - Number of Z slices in dataset, defaults to 1"
     print "noZInFile - True if the z slice does not appear in the filename, otherwise false"
     print "chanLabel - Label that describes source for each channel, default skip, yellow, blue, brightfield"
+    print "            Valid labels: skip, brightfield, red, green, blue, yellow"
     print "analysisRoi - Rectangular area to perform cell detection on, default 0,0,512,480"
     print "dsNameIdx - Index of well name within filename, when delimiting on underscores (_)"
 
