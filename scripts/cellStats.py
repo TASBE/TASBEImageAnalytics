@@ -95,7 +95,7 @@ def main(cfg):
 
         datasetPath = os.path.join(cfg.outputDir, datasetName)
         if not os.path.exists(datasetPath):
-            os.mkdir(datasetPath)
+            os.makedirs(datasetPath)
             
         start = time.time()
         dsResults.append(datasetName + ", " + processDataset(cfg, datasetName, dsImgFiles))
