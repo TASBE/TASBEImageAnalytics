@@ -2,13 +2,15 @@ from ij import IJ, ImagePlus, VirtualStack, WindowManager
 from ij.process import ImageConverter, ImageProcessor, ByteProcessor
 from ij.measure import ResultsTable
 from ij.plugin import ChannelSplitter
-from ij.plugin.frame import RoiManager
+#from ij.plugin.frame import RoiManager
 from ij.plugin.filter import ParticleAnalyzer
 from ij.measure import Measurements
 from ij.gui import Roi
 
 from java.lang import Double
 import os, glob, re, time, sys
+import ConfigParser
+import io
 #from jarray import zeros
 
 #
@@ -40,9 +42,20 @@ def printUsage():
     global numZ;
     
     print "This script will read tif files from an input directory and compute statistics on the cell images."
-    print "The directory is assumed to contain " + str(numChannels) + " channels and " + str(numZ) + " Z slice(s)."
+    print "The script must be pointed to a configuration ini file that will define several important aspects."
+    print "The following parameters are recognized in the [Config] section:"
+
+    print "inputDir  - Dir to read in tif files from. (Required)"
+    print "outputDir - Dir to write output to. (Required)"
+    print "numChannels - Number of channels in dataset, defaults to 4"
+    print "numZ - Number of Z slices in dataset, defaults to 1"
+    print "noZInFile - True if the z slice does not appear in the filename, otherwise false"
+    print "chanLabel - Label that describes source for each channel, default skip, yellow, blue, brightfield"
+    print "analysisRoi - Rectangular area to perform cell detection on, default 0,0,512,480"
+    print "dsNameIdx - Index of well name within filename, when delimiting on underscores (_)"
+
     print "Usage: "
-    print "<inputDir> <outputDir>"
+    print "<cfgPath>"
     
 ####
 #
@@ -281,25 +294,75 @@ class config:
 # Checking for __main__ will cause running from ImageJ to fail        
 #if __name__ == "__main__":
 
-cfg = config()
+#@String cfgDir
 
-#@String inputDir
-#@String outputDir
-
-# Check to see if inputDir/outputDir are both defined
+# Check to see if cfgDir is defined
 # They could be defined if running from ImageJ directly
 try:
-    # Works if input/outputDir are already defined, as if in ImageJ
-    cfg.inputDir = inputDir
-    cfg.outputDir = outputDir
+    cfgDir
 except NameError:
     argc = len(sys.argv) - 1
-    if not argc == 2:
-        print "Expected 2 arguments, received " + str(argc) + "!"
+    if not argc == 1:
+        print "Expected 1 argument, received " + str(argc) + "!"
         printUsage()
         quit(1)
-    cfg.inputDir = sys.argv[1]
-    cfg.outputDir = sys.argv[2]
+    cfgDir = sys.argv[1]
+
+# Load the configuration file
+with open(cfgDir) as f:
+    cfgFile = f.read()
+cfgParser = ConfigParser.RawConfigParser(allow_no_value=True)
+cfgParser.readfp(io.BytesIO(cfgFile))
+
+if not cfgParser.has_section("Config"):
+    print "Config file doesn't contain [Config] section!"
+    quit(1)
+
+cfg = config()
+if cfgParser.has_option("Config", "numchannels") :
+    numChannels = int(cfgParser.get("Config", "numchannels"))
+else:
+    numChannels = cfg.numChannels
+for option in cfgParser.options("Config"):
+    if option == "inputdir":
+        cfg.inputDir = cfgParser.get("Config", option)
+    elif option == "outputdir":
+        cfg.outputDir = cfgParser.get("Config", option)
+    elif option == "numchannels":
+        cfg.numChannels = int(cfgParser.get("Config", option))
+    elif option == "numz":
+        cfg.numZ = int(cfgParser.get("Config", option))
+    elif option == "nozinfile":
+        cfg.noZInFile  = bool(cfgParser.get("Config", option))
+    elif option == "chanlabel":
+        toks = cfgParser.get("Config", option).split(",")
+        if not len(toks) == numChannels:
+            print "Improper value for chanLabel config, expected " + numChannels + " comma separated values!  Received " + str(len(toks))
+        cfg.chanLabel = []
+        for tok in toks:
+            cfg.chanLabel.append(tok.strip())
+    elif option == "analysisroi":
+        toks = cfgParser.get("Config", option).split(",")
+        if not len(toks) == 4:
+            print "Improper value for analysisRoi config, expected " + 4+ " comma separated values!  Received " + str(len(toks))
+        cfg.analysisRoi = Roi(int(toks[0]),int(toks[1]),int(toks[2]),int(toks[3]))
+    elif option == "dsnameidx":
+        cfg.dsNameIdx = int(cfgParser.get("Config", option))
+    else:
+        print "Warning, unrecognized config option: " + option
+
+# Print Config
+print("Using Config:")
+print("\tinputDir:\t"    + cfg.inputDir)
+print("\toutputDir:\t"   + cfg.outputDir)
+print("\tnumChannels:\t" + str(cfg.numChannels))
+print("\tnumZ:\t\t"        + str(cfg.numZ))
+print("\tnoZInFile:\t"   + str(cfg.noZInFile))
+print("\tchanLabel:\t"   + ", ".join(cfg.chanLabel))
+print("\tanalysisRoi:\t" + str(cfg.analysisRoi))
+print("\n")
+
+
     
 start = time.time()
 main(cfg)
