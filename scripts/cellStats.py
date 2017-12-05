@@ -297,8 +297,7 @@ def processDataset(cfg, datasetName, imgFiles):
             images[c][z].setTitle(datasetName + ", channel " + str(c) + ", z " + str(z))
     
     # Process images
-    stats = dict()
-    processImages(cfg, datasetName, datasetPath, images, stats)
+    stats = processImages(cfg, datasetName, datasetPath, images)
 
     # Output Results
     resultsFile = open(os.path.join(datasetPath, datasetName + "_results.txt"), "w")
@@ -310,18 +309,18 @@ def processDataset(cfg, datasetName, imgFiles):
         writeArea = False
         # Handle brigthfield channel
         if (cfg.chanLabel[c] == BRIGHTFIELD):
-            if not stats[AREA][c] :
+            if not stats[c][AREA] :
                 area = 0;
             else:
-                area = max(stats[AREA][c])
+                area = max(stats[c][AREA])
                 writeArea = True
             channelAreas["totalArea"] = area
         # Handle Fluorscent Channels   
         elif (cfg.chanLabel[c] == BLUE) or (cfg.chanLabel[c] == RED) or (cfg.chanLabel[c] == GREEN) or (cfg.chanLabel[c] == YELLOW): #
-            if not stats[AREA][c] :
+            if not stats[c][AREA] :
                 area = 0;
             else:
-                area = sum(stats[AREA][c])
+                area = sum(stats[c][AREA])
                 writeArea = True
             channelAreas[cfg.chanLabel[c]] = area
         # Skip channel
@@ -330,7 +329,7 @@ def processDataset(cfg, datasetName, imgFiles):
         # Write out individual areas per channel
         if writeArea:
             chanResultsFile = open(os.path.join(datasetPath, datasetName + chanStr + "areas.txt"), "w")
-            for a in stats[AREA][c] :
+            for a in stats[c][AREA] :
                 chanResultsFile.write("%10.4f\n" % a)
             chanResultsFile.close()
 
@@ -356,9 +355,8 @@ def processDataset(cfg, datasetName, imgFiles):
 #  All of the processing that happens for each image
 #
 ####
-def processImages(cfg, wellName, wellPath, images, stats):
-
-    stats[AREA] = []
+def processImages(cfg, wellName, wellPath, images):
+    stats = [dict() for x in range(0, cfg.numChannels)]
 
     for c in range(0, cfg.numChannels):
         chanStr = 'ch%(channel)02d' % {"channel" : c};
@@ -403,9 +401,9 @@ def processImages(cfg, wellName, wellPath, images, stats):
                 minSize = 5
                 darkBackground = True
             elif (cfg.chanLabel[c] == SKIP):
-                stats[AREA].append([])
                 continue
             WindowManager.setTempCurrentImage(currIP);
+
             if cfg.debugOutput:
                 IJ.saveAs('png', os.path.join(wellPath, "Processing_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
             currIP.getProcessor().setAutoThreshold("Default", darkBackground, ImageProcessor.NO_LUT_UPDATE)
@@ -415,8 +413,9 @@ def processImages(cfg, wellName, wellPath, images, stats):
                 print "\tChannel " + cfg.chanLabel[c] + " is not GRAY8, instead type is %d" % currIP.getType()
             if threshRange > 230:
                 print "\t\tIgnored Objects due to threshold range!"
-                stats[AREA].append([])
+                stats[c][AREA] = []
                 continue 
+
             IJ.run(currIP, "Convert to Mask", "")
             IJ.run(currIP, "Close-", "")
             if cfg.debugOutput:
@@ -481,10 +480,10 @@ def processImages(cfg, wellName, wellPath, images, stats):
             if table.getColumn(ResultsTable.AREA):
                 for pixArea in table.getColumn(ResultsTable.AREA):
                     newAreas.append(pixArea * cfg.pixelHeight * cfg.pixelWidth)
-            stats[AREA].append(newAreas)
+            stats[c][AREA] = newAreas
             #currIP.hide()
 
-
+    return stats
 ####
 #
 #  The Config Class - storing configuration info
