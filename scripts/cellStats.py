@@ -567,7 +567,7 @@ for option in cfgParser.options("Config"):
     elif option == "numz":
         cfg.numZ = int(cfgParser.get("Config", option))
     elif option == "nozinfile":
-        cfg.noZInFile  = bool(cfgParser.get("Config", option))
+        cfg.noZInFile  = cfgParser.get("Config", option) == "True"
     elif option == "chanstoskip":
         toks = cfgParser.get("Config", option).split(",")
         cfg.chansToSkip = []
@@ -592,7 +592,7 @@ for option in cfgParser.options("Config"):
         for t in toks:
             cfg.wellNames.append(t)
     elif option == "debugoutput":
-        cfg.debugOutput = bool(cfgParser.get("Config", option))
+        cfg.debugOutput = cfgParser.get("Config", option) == "True"
     else:
         print "Warning, unrecognized config option: " + option
 
