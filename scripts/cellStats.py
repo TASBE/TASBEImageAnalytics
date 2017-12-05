@@ -368,7 +368,7 @@ def processImages(cfg, wellName, wellPath, images, areas):
             if (cfg.chanLabel[c] == BRIGHTFIELD):
                 toGray = ImageConverter(currIP)
                 toGray.convertToGray8()
-                minCircularity = 0.02 # We want to identify one big cell ball, so ignore small less circular objects
+                minCircularity = 0.001 # We want to identify one big cell ball, so ignore small less circular objects
                 minSize = 40
                 darkBackground = False
             elif (cfg.chanLabel[c] == BLUE) or (cfg.chanLabel[c] == RED) or (cfg.chanLabel[c] == GREEN): #
@@ -379,7 +379,7 @@ def processImages(cfg, wellName, wellPath, images, areas):
                     chanIdx = 1;
                 imgChanns = ChannelSplitter.split(currIP);
                 currIP = imgChanns[chanIdx];
-                minCircularity = 0.02
+                minCircularity = 0.001
                 minSize = 5
                 darkBackground = True
             elif (cfg.chanLabel[c] == YELLOW):
@@ -394,7 +394,7 @@ def processImages(cfg, wellName, wellPath, images, areas):
                         newPix.putPixel(x, y, (currPix[0] + currPix[1]) / 2)
                 
                 currIP = ImagePlus(title, newPix)
-                minCircularity = 0.02
+                minCircularity = 0.001
                 minSize = 5
                 darkBackground = True
             elif (cfg.chanLabel[c] == SKIP):
