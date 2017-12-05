@@ -68,7 +68,24 @@ def printUsage():
 
     print "Usage: "
     print "<cfgPath>"
-    
+ 
+ 
+####
+#
+#
+####
+def getCSVHeader(cfg):
+    outputChans = [];
+    for chan in cfg.chanLabel:
+        if not chan == SKIP and not chan == BRIGHTFIELD:
+            outputChans.append(chan)
+    headerString = "frame, brightfield area (um^2), "
+    for chan in outputChans:
+        headerString += chan + " area (um^2), "
+        headerString += "percent " + chan + ", " 
+    headerString += "classification \n"
+    return headerString
+
 ####
 #
 #
@@ -162,17 +179,8 @@ def main(cfg):
 
     # Write out summary output
     resultsFile = open(os.path.join(cfg.outputDir, "AllResults.csv"), "w")
-    
-    outputChans = [];
-    for chan in cfg.chanLabel:
-        if not chan == SKIP and not chan == BRIGHTFIELD:
-            outputChans.append(chan)
-    headerString = "frame, brightfield area (um^2), "
-    for chan in outputChans:
-        headerString += chan + " area (um^2), "
-        headerString += "percent " + chan + ", " 
-    headerString += "classification \n"
-    resultsFile.write(headerString)
+
+    resultsFile.write(getCSVHeader(cfg))
     for result in dsResults:
         resultsFile.write(result);
     resultsFile.close()    
@@ -259,11 +267,12 @@ def processDataset(cfg, datasetName, imgFiles):
                 if chanStr in fileName and (cfg.noZInFile or zStr in fileName):
                     addedImages = True
                     imgFileCats[c][z].append(fileName)
-    
+
+    # Check for no images
     if not addedImages:
         print "Failed to add any images to chan/z categories! Problem with input dir?"
         quit()
-        
+
     # Load all images
     images = [[0 for z in range(cfg.numZ)] for c in range(cfg.numChannels)]
     for c in range(0, cfg.numChannels):
@@ -280,6 +289,65 @@ def processDataset(cfg, datasetName, imgFiles):
     
     # Process images
     areas = []
+    processImages(cfg, datasetName, datasetPath, images, areas)
+
+    # Output Results
+    resultsFile = open(os.path.join(datasetPath, datasetName + "_results.txt"), "w")
+    resultsFile.write(getCSVHeader(cfg));
+    channelAreas = dict() 
+    for c in range(0, cfg.numChannels) :
+        chanStr = '_ch%(channel)02d_' % {"channel" : c};
+        area = 0;
+        writeArea = False
+        # Handle brigthfield channel
+        if (cfg.chanLabel[c] == BRIGHTFIELD):
+            if not areas[c] :
+                area = 0;
+            else:
+                area = max(areas[c])
+                writeArea = True
+            channelAreas["totalArea"] = area
+        # Handle Fluorscent Channels   
+        elif (cfg.chanLabel[c] == BLUE) or (cfg.chanLabel[c] == RED) or (cfg.chanLabel[c] == GREEN) or (cfg.chanLabel[c] == YELLOW): #
+            if not areas[c] :
+                area = 0;
+            else:
+                area = sum(areas[c]) 
+                writeArea = True
+            channelAreas[cfg.chanLabel[c]] = area
+        # Skip channel
+        elif (cfg.chanLabel[c] == SKIP):
+            continue
+        # Write out individual areas per channel
+        if writeArea:
+            chanResultsFile = open(os.path.join(datasetPath, datasetName + chanStr + "areas.txt"), "w")
+            for a in areas[c] :
+                chanResultsFile.write("%10.4f\n" % a)
+            chanResultsFile.close()
+
+    if channelAreas["totalArea"] == 0:
+        channelAreas["totalArea"] = 0.000000001
+
+    outputChans = [];
+    for chan in cfg.chanLabel:
+        if not chan == SKIP and not chan == BRIGHTFIELD:
+            outputChans.append(chan)
+
+    resultsString = "%d,\t\t\t %10.4f," % (1, channelAreas["totalArea"])
+    for chan in outputChans:
+        resultsString += "\t\t %10.4f," % channelAreas[chan]
+        resultsString += "\t\t %0.4f," % (channelAreas[chan] /  channelAreas["totalArea"])
+    resultsString += "\n"   
+    resultsFile.write(resultsString)
+    resultsFile.close()
+    return resultsString
+
+####
+#
+#  All of the processing that happens for each image
+#
+####
+def processImages(cfg, datasetName, datasetPath, images, areas):
     for c in range(0, cfg.numChannels):
         chanStr = 'ch%(channel)02d' % {"channel" : c};
         for z in range(0, cfg.numZ):
@@ -364,60 +432,7 @@ def processDataset(cfg, datasetName, imgFiles):
                     newAreas.append(pixArea * cfg.pixelHeight * cfg.pixelWidth)
             areas.append(newAreas)
             #currIP.hide()
-        
-    resultsFile = open(os.path.join(datasetPath, datasetName + "_results.txt"), "w")
-    outputChans = [];
-    for chan in cfg.chanLabel:
-        if not chan == SKIP and not chan == BRIGHTFIELD:
-            outputChans.append(chan)
-    headerString = "frame, brightfield area (um^2), "
-    for chan in outputChans:
-        headerString += chan + " area (um^2), "
-        headerString += "percent " + chan + ", " 
-    headerString += "classification \n"
-    resultsFile.write(headerString);
-    channelAreas = dict() 
-    for c in range(0, cfg.numChannels) :
-        chanStr = '_ch%(channel)02d_' % {"channel" : c};
-        area = 0;
-        writeArea = False
-        # Handle brigthfield channel
-        if (cfg.chanLabel[c] == BRIGHTFIELD):
-            if not areas[c] :
-                area = 0;
-            else:
-                area = max(areas[c])
-                writeArea = True
-            channelAreas["totalArea"] = area
-        # Handle Fluorscent Channels   
-        elif (cfg.chanLabel[c] == BLUE) or (cfg.chanLabel[c] == RED) or (cfg.chanLabel[c] == GREEN) or (cfg.chanLabel[c] == YELLOW): #
-            if not areas[c] :
-                area = 0;
-            else:
-                area = sum(areas[c]) 
-                writeArea = True
-            channelAreas[cfg.chanLabel[c]] = area
-        # Skip channel
-        elif (cfg.chanLabel[c] == SKIP):
-            continue
-        if writeArea:
-            chanResultsFile = open(os.path.join(datasetPath, datasetName + chanStr + "areas.txt"), "w")
-            for a in areas[c] :
-                chanResultsFile.write("%10.4f\n" % a)
-            chanResultsFile.close()
 
-    if channelAreas["totalArea"] == 0:
-        channelAreas["totalArea"] = 0.000000001
-
-    resultsString = "%d,\t\t\t %10.4f," % (1, channelAreas["totalArea"])
-    for chan in outputChans:
-        resultsString += "\t\t %10.4f," % channelAreas[chan]
-        resultsString += "\t\t %0.4f," % (channelAreas[chan] /  channelAreas["totalArea"])
-        
-    resultsString += "\n"   
-    resultsFile.write(resultsString)
-    resultsFile.close()
-    return resultsString
 
 ####
 #
