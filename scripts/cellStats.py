@@ -65,6 +65,7 @@ def printUsage():
     print "chansToSkip - List of channel names that will be skipped if channels are read from XML properties"
     print "analysisRoi - Rectangular area to perform cell detection on, default 0,0,512,480, must be defined in config file"
     print "dsNameIdx - Index of well name within filename, when delimiting on underscores (_), also read from XML properties"
+    print "wellNames - Option, list of well names to process, others are ignored"
 
     print "Usage: "
     print "<cfgPath>"
@@ -153,6 +154,11 @@ def main(cfg):
     # Process each well
     dsResults = []
     for wellName in uniqueNames:
+        # Check to see if we should ignore this well
+        if cfg.wellNames:
+            if not wellName in cfg.wellNames:
+                continue;
+
         dsImgFiles = [];
         for i in range(0, len(imgFiles)) :
             if wellName == wellNames[i] :
@@ -454,11 +460,13 @@ class config:
     dsNameIdx = 4;
     pixelHeight = 1; # in micrometers
     pixelWidth = 1; # in micrometers
+    wellNames = [] # List of well names to process, empty implies process all
     
     def printCfg(self):
         print("Using Config:")
         print("\tinputDir:\t"    + self.inputDir)
         print("\toutputDir:\t"   + self.outputDir)
+        print("\twellNames:\t" + ", ".join(self.wellNames))
         print("\tnumChannels:\t" + str(self.numChannels))
         print("\tnumZ:\t\t"        + str(self.numZ))
         print("\tnoZInFile:\t"   + str(self.noZInFile))
@@ -537,6 +545,10 @@ for option in cfgParser.options("Config"):
         cfg.analysisRoi = Roi(int(toks[0]),int(toks[1]),int(toks[2]),int(toks[3]))
     elif option == "dsnameidx":
         cfg.dsNameIdx = int(cfgParser.get("Config", option))
+    elif option == "wellnames":
+        toks = cfgParser.get("Config", option).split(",")
+        for t in toks:
+            cfg.wellNames.append(t)
     else:
         print "Warning, unrecognized config option: " + option
 
@@ -544,6 +556,7 @@ for option in cfgParser.options("Config"):
 print("Using Config:")
 print("\tinputDir:\t"    + cfg.inputDir)
 print("\toutputDir:\t"   + cfg.outputDir)
+print("\twellNames:\t" + ", ".join(cfg.wellNames))
 print("\tanalysisRoi:\t" + str(cfg.analysisRoi))
 print("\tchansToSkip:\t" + ", ".join(cfg.chansToSkip))
 print("\n")
