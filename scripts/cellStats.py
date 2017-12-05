@@ -398,7 +398,7 @@ def processImages(cfg, wellName, wellPath, images, areas):
                 darkBackground = True
             elif (cfg.chanLabel[c] == SKIP):
                 areas.append([])
-                continue 
+                continue
             WindowManager.setTempCurrentImage(currIP);
             if cfg.debugOutput:
                 IJ.saveAs('png', os.path.join(wellPath, "Processing_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
@@ -423,7 +423,7 @@ def processImages(cfg, wellName, wellPath, images, areas):
             # Create a hidden ROI manager, to store a ROI for each blob or cell
             #roim = RoiManager(True)
             # Create a ParticleAnalyzer
-            paFlags = ParticleAnalyzer.IN_SITU_SHOW | ParticleAnalyzer.SHOW_OUTLINES | ParticleAnalyzer.EXCLUDE_EDGE_PARTICLES | ParticleAnalyzer.SHOW_ROI_MASKS | ParticleAnalyzer.CLEAR_WORKSHEET
+            paFlags = ParticleAnalyzer.IN_SITU_SHOW | ParticleAnalyzer.SHOW_OUTLINES | ParticleAnalyzer.SHOW_ROI_MASKS | ParticleAnalyzer.CLEAR_WORKSHEET
             pa = ParticleAnalyzer(paFlags, Measurements.AREA, table, minSize, Double.POSITIVE_INFINITY, minCircularity, 1.0)
             #pa.setHideOutputImage(True)
     
