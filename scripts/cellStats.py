@@ -65,7 +65,8 @@ def printUsage():
     print "chansToSkip - List of channel names that will be skipped if channels are read from XML properties"
     print "analysisRoi - Rectangular area to perform cell detection on, default 0,0,512,480, must be defined in config file"
     print "dsNameIdx - Index of well name within filename, when delimiting on underscores (_), also read from XML properties"
-    print "wellNames - Option, list of well names to process, others are ignored"
+    print "wellNames - Optional, list of well names to process, others are ignored"
+    print "debugOutput - Optional, True or False, if True output additional info for debugging purposes"
 
     print "Usage: "
     print "<cfgPath>"
@@ -353,13 +354,15 @@ def processDataset(cfg, datasetName, imgFiles):
 #  All of the processing that happens for each image
 #
 ####
-def processImages(cfg, datasetName, datasetPath, images, areas):
+def processImages(cfg, wellName, wellPath, images, areas):
     for c in range(0, cfg.numChannels):
         chanStr = 'ch%(channel)02d' % {"channel" : c};
         for z in range(0, cfg.numZ):
             zStr =  'z%(depth)02d' % {"depth" : z};
             currIP = images[c][z];
-            #currIP.show()
+            if cfg.debugOutput:
+                WindowManager.setTempCurrentImage(currIP);
+                IJ.saveAs('png', os.path.join(wellPath, "Orig_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
             # We need to get to a grayscale image, which will be done differently for different channels
             if (cfg.chanLabel[c] == BRIGHTFIELD):
                 toGray = ImageConverter(currIP)
@@ -397,7 +400,8 @@ def processImages(cfg, datasetName, datasetPath, images, areas):
                 areas.append([])
                 continue 
             WindowManager.setTempCurrentImage(currIP);
-            #currIP.show()
+            if cfg.debugOutput:
+                IJ.saveAs('png', os.path.join(wellPath, "Processing_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
             currIP.getProcessor().setAutoThreshold("Default", darkBackground, ImageProcessor.NO_LUT_UPDATE)
             threshRange = currIP.getProcessor().getMaxThreshold() - currIP.getProcessor().getMinThreshold()
             print "\tChannel %14s threshold:\t [%d, %d]\t range: %d" % (cfg.chanLabel[c],currIP.getProcessor().getMinThreshold(), currIP.getProcessor().getMaxThreshold(), threshRange)
@@ -409,6 +413,9 @@ def processImages(cfg, datasetName, datasetPath, images, areas):
                 continue 
             IJ.run(currIP, "Convert to Mask", "")
             IJ.run(currIP, "Close-", "")
+            if cfg.debugOutput:
+                WindowManager.setTempCurrentImage(currIP);
+                IJ.saveAs('png', os.path.join(wellPath, "Binary_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
             currIP.setRoi(cfg.analysisRoi)
             
             # Create a table to store the results
@@ -429,7 +436,7 @@ def processImages(cfg, datasetName, datasetPath, images, areas):
             #    r.setStrokeWidth(2)
             
             #outImg = pa.getOutputImage()
-            IJ.saveAs('png', os.path.join(datasetPath, "Segmentation_" + datasetName + "_" + zStr + "_" + chanStr + "_particles.png"))
+            IJ.saveAs('png', os.path.join(wellPath, "Segmentation_" + wellName + "_" + zStr + "_" + chanStr + "_particles.png"))
     
             # The measured areas are listed in the first column of the results table, as a float array:
             newAreas = []
@@ -461,6 +468,7 @@ class config:
     pixelHeight = 1; # in micrometers
     pixelWidth = 1; # in micrometers
     wellNames = [] # List of well names to process, empty implies process all
+    debugOutput =  False; # If true, additional info will be output
     
     def printCfg(self):
         print("Using Config:")
@@ -474,6 +482,7 @@ class config:
         print("\tanalysisRoi:\t" + str(self.analysisRoi))
         print("\tpixelHeight:\t" + str(self.pixelHeight))
         print("\tpixelWidth:\t" + str(self.pixelWidth))
+        print("\tdebugOutput:\t" + str(self.debugOutput))
         print("\n")
 ####
 #
@@ -549,6 +558,8 @@ for option in cfgParser.options("Config"):
         toks = cfgParser.get("Config", option).split(",")
         for t in toks:
             cfg.wellNames.append(t)
+    elif option == "debugoutput":
+        cfg.debugOutput = bool(cfgParser.get("Config", option))
     else:
         print "Warning, unrecognized config option: " + option
 
@@ -559,6 +570,7 @@ print("\toutputDir:\t"   + cfg.outputDir)
 print("\twellNames:\t" + ", ".join(cfg.wellNames))
 print("\tanalysisRoi:\t" + str(cfg.analysisRoi))
 print("\tchansToSkip:\t" + ", ".join(cfg.chansToSkip))
+print("\tdebugOutput:\t" + str(cfg.debugOutput))
 print("\n")
 
 
