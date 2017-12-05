@@ -21,6 +21,8 @@ YELLOW = "Yellow"
 BRIGHTFIELD = "Gray"
 SKIP = "Skip"
 
+AREA = "Area"
+
 #
 # Stackoverflow code for numerically sorting strings
 # https://stackoverflow.com/questions/4623446/how-do-you-sort-files-numerically
@@ -295,8 +297,8 @@ def processDataset(cfg, datasetName, imgFiles):
             images[c][z].setTitle(datasetName + ", channel " + str(c) + ", z " + str(z))
     
     # Process images
-    areas = []
-    processImages(cfg, datasetName, datasetPath, images, areas)
+    stats = dict()
+    processImages(cfg, datasetName, datasetPath, images, stats)
 
     # Output Results
     resultsFile = open(os.path.join(datasetPath, datasetName + "_results.txt"), "w")
@@ -308,18 +310,18 @@ def processDataset(cfg, datasetName, imgFiles):
         writeArea = False
         # Handle brigthfield channel
         if (cfg.chanLabel[c] == BRIGHTFIELD):
-            if not areas[c] :
+            if not stats[AREA][c] :
                 area = 0;
             else:
-                area = max(areas[c])
+                area = max(stats[AREA][c])
                 writeArea = True
             channelAreas["totalArea"] = area
         # Handle Fluorscent Channels   
         elif (cfg.chanLabel[c] == BLUE) or (cfg.chanLabel[c] == RED) or (cfg.chanLabel[c] == GREEN) or (cfg.chanLabel[c] == YELLOW): #
-            if not areas[c] :
+            if not stats[AREA][c] :
                 area = 0;
             else:
-                area = sum(areas[c]) 
+                area = sum(stats[AREA][c])
                 writeArea = True
             channelAreas[cfg.chanLabel[c]] = area
         # Skip channel
@@ -328,7 +330,7 @@ def processDataset(cfg, datasetName, imgFiles):
         # Write out individual areas per channel
         if writeArea:
             chanResultsFile = open(os.path.join(datasetPath, datasetName + chanStr + "areas.txt"), "w")
-            for a in areas[c] :
+            for a in stats[AREA][c] :
                 chanResultsFile.write("%10.4f\n" % a)
             chanResultsFile.close()
 
@@ -354,7 +356,10 @@ def processDataset(cfg, datasetName, imgFiles):
 #  All of the processing that happens for each image
 #
 ####
-def processImages(cfg, wellName, wellPath, images, areas):
+def processImages(cfg, wellName, wellPath, images, stats):
+
+    stats[AREA] = []
+
     for c in range(0, cfg.numChannels):
         chanStr = 'ch%(channel)02d' % {"channel" : c};
         for z in range(0, cfg.numZ):
@@ -398,7 +403,7 @@ def processImages(cfg, wellName, wellPath, images, areas):
                 minSize = 5
                 darkBackground = True
             elif (cfg.chanLabel[c] == SKIP):
-                areas.append([])
+                stats[AREA].append([])
                 continue
             WindowManager.setTempCurrentImage(currIP);
             if cfg.debugOutput:
@@ -410,7 +415,7 @@ def processImages(cfg, wellName, wellPath, images, areas):
                 print "\tChannel " + cfg.chanLabel[c] + " is not GRAY8, instead type is %d" % currIP.getType()
             if threshRange > 230:
                 print "\t\tIgnored Objects due to threshold range!"
-                areas.append([])
+                stats[AREA].append([])
                 continue 
             IJ.run(currIP, "Convert to Mask", "")
             IJ.run(currIP, "Close-", "")
@@ -473,10 +478,10 @@ def processImages(cfg, wellName, wellPath, images, areas):
 
             # The measured areas are listed in the first column of the results table, as a float array:
             newAreas = []
-            if table.getColumn(0):
-                for pixArea in table.getColumn(0):
+            if table.getColumn(ResultsTable.AREA):
+                for pixArea in table.getColumn(ResultsTable.AREA):
                     newAreas.append(pixArea * cfg.pixelHeight * cfg.pixelWidth)
-            areas.append(newAreas)
+            stats[AREA].append(newAreas)
             #currIP.hide()
 
 
