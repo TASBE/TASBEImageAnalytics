@@ -1,9 +1,9 @@
 from ij import IJ, ImagePlus, VirtualStack, WindowManager
-from ij.process import ImageConverter, ImageProcessor, ByteProcessor
+from ij.process import ImageConverter, ImageProcessor, ByteProcessor, ColorProcessor
 from ij.measure import ResultsTable
 from ij.plugin import ChannelSplitter
 #from ij.plugin.frame import RoiManager
-from ij.plugin.filter import ParticleAnalyzer
+from ij.plugin.filter import ParticleAnalyzer, Analyzer
 from ij.measure import Measurements
 from ij.gui import Roi
 
@@ -360,6 +360,7 @@ def processImages(cfg, wellName, wellPath, images, areas):
         for z in range(0, cfg.numZ):
             zStr =  'z%(depth)02d' % {"depth" : z};
             currIP = images[c][z];
+            resultsImage = currIP.duplicate()
             if cfg.debugOutput:
                 WindowManager.setTempCurrentImage(currIP);
                 IJ.saveAs('png', os.path.join(wellPath, "Orig_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
@@ -417,13 +418,18 @@ def processImages(cfg, wellName, wellPath, images, areas):
                 WindowManager.setTempCurrentImage(currIP);
                 IJ.saveAs('png', os.path.join(wellPath, "Binary_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
             currIP.setRoi(cfg.analysisRoi)
-            
+
+            if cfg.debugOutput:
+                WindowManager.setTempCurrentImage(resultsImage);
+                IJ.saveAs('png', os.path.join(wellPath, "resultsImage" + wellName + "_" + zStr + "_" + chanStr + ".png"))
+                WindowManager.setTempCurrentImage(currIP);
+
             # Create a table to store the results
             table = ResultsTable()
             # Create a hidden ROI manager, to store a ROI for each blob or cell
             #roim = RoiManager(True)
             # Create a ParticleAnalyzer
-            paFlags = ParticleAnalyzer.IN_SITU_SHOW | ParticleAnalyzer.SHOW_OUTLINES | ParticleAnalyzer.SHOW_ROI_MASKS | ParticleAnalyzer.CLEAR_WORKSHEET
+            paFlags = ParticleAnalyzer.IN_SITU_SHOW | ParticleAnalyzer.SHOW_MASKS | ParticleAnalyzer.CLEAR_WORKSHEET
             pa = ParticleAnalyzer(paFlags, Measurements.AREA, table, minSize, Double.POSITIVE_INFINITY, minCircularity, 1.0)
             #pa.setHideOutputImage(True)
     
@@ -437,7 +443,34 @@ def processImages(cfg, wellName, wellPath, images, areas):
             
             #outImg = pa.getOutputImage()
             IJ.saveAs('png', os.path.join(wellPath, "Segmentation_" + wellName + "_" + zStr + "_" + chanStr + "_particles.png"))
-    
+
+            width = currIP.getWidth();
+            height = currIP.getHeight();
+            overlayProcessor = ColorProcessor(width, height)
+            currProcessor = currIP.getProcessor()
+
+            if (cfg.chanLabel[c] == BRIGHTFIELD):
+                maskColor = 0x0000ff00
+            elif (cfg.chanLabel[c] == YELLOW):
+                maskColor = 0x000000ff
+            elif (cfg.chanLabel[c] == RED):
+                maskColor = 0x0000ff00
+            elif (cfg.chanLabel[c] == GREEN):
+                maskColor = 0x00ff0000
+            elif (cfg.chanLabel[c] == BLUE):
+                maskColor = 0x00ffff00
+
+            for x in range(0, width) :
+                for y in range(0,height) :
+                    currPix = currProcessor.getPixel(x,y);
+                    if currPix == 0x00000000:
+                        overlayProcessor.putPixel(x, y, resultsImage.getProcessor().getPixel(x,y))
+                    else:
+                        overlayProcessor.putPixel(x, y, maskColor)
+            overlayImage = ImagePlus(title, overlayProcessor)
+            WindowManager.setTempCurrentImage(overlayImage);
+            IJ.saveAs('png', os.path.join(wellPath, "Overlay_" + wellName + "_" + zStr + "_" + chanStr + "_particles.png"))
+
             # The measured areas are listed in the first column of the results table, as a float array:
             newAreas = []
             if table.getColumn(0):
