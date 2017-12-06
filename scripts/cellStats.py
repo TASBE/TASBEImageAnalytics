@@ -21,7 +21,7 @@ YELLOW = "Yellow"
 BRIGHTFIELD = "Gray"
 SKIP = "Skip"
 
-AREA = "Area"
+UM_AREA = "Area (um^2)"
 
 #
 # Stackoverflow code for numerically sorting strings
@@ -306,31 +306,43 @@ def processDataset(cfg, datasetName, imgFiles):
     for c in range(0, cfg.numChannels) :
         chanStr = '_ch%(channel)02d_' % {"channel" : c};
         area = 0;
-        writeArea = False
+        writeStats = False
         # Handle brigthfield channel
         if (cfg.chanLabel[c] == BRIGHTFIELD):
-            if not stats[c][AREA] :
+            if not stats[c][UM_AREA] :
                 area = 0;
             else:
-                area = max(stats[c][AREA])
-                writeArea = True
+                area = max(stats[c][UM_AREA])
+                writeStats = True
             channelAreas["totalArea"] = area
         # Handle Fluorscent Channels   
         elif (cfg.chanLabel[c] == BLUE) or (cfg.chanLabel[c] == RED) or (cfg.chanLabel[c] == GREEN) or (cfg.chanLabel[c] == YELLOW): #
-            if not stats[c][AREA] :
+            if not stats[c][UM_AREA] :
                 area = 0;
             else:
-                area = sum(stats[c][AREA])
-                writeArea = True
+                area = sum(stats[c][UM_AREA])
+                writeStats = True
             channelAreas[cfg.chanLabel[c]] = area
         # Skip channel
         elif (cfg.chanLabel[c] == SKIP):
             continue
         # Write out individual areas per channel
-        if writeArea:
-            chanResultsFile = open(os.path.join(datasetPath, datasetName + chanStr + "areas.txt"), "w")
-            for a in stats[c][AREA] :
-                chanResultsFile.write("%10.4f\n" % a)
+        if writeStats:
+            chanResultsFile = open(os.path.join(datasetPath, datasetName + chanStr + "stats.txt"), "w")
+            numParticles = len(stats[c][UM_AREA])
+            # Writer Header
+
+            keys = sorted(stats[c].keys())
+            chanResultsFile.write(", ".join(keys) + "\n")
+            for particle in range(0, numParticles):
+                line = ""
+                for measure in keys:
+                    if stats[c][measure]:
+                        line += "%10.4f, " % stats[c][measure][particle]
+                    else:
+                        line += "      N/A, "
+                line += "\n"
+                chanResultsFile.write(line);
             chanResultsFile.close()
 
     if channelAreas["totalArea"] == 0:
@@ -413,7 +425,7 @@ def processImages(cfg, wellName, wellPath, images):
                 print "\tChannel " + cfg.chanLabel[c] + " is not GRAY8, instead type is %d" % currIP.getType()
             if threshRange > 230:
                 print "\t\tIgnored Objects due to threshold range!"
-                stats[c][AREA] = []
+                stats[c][UM_AREA] = []
                 continue 
 
             IJ.run(currIP, "Convert to Mask", "")
@@ -434,7 +446,8 @@ def processImages(cfg, wellName, wellPath, images):
             #roim = RoiManager(True)
             # Create a ParticleAnalyzer
             paFlags = ParticleAnalyzer.IN_SITU_SHOW | ParticleAnalyzer.SHOW_MASKS | ParticleAnalyzer.CLEAR_WORKSHEET
-            pa = ParticleAnalyzer(paFlags, Measurements.AREA, table, minSize, Double.POSITIVE_INFINITY, minCircularity, 1.0)
+            pa = ParticleAnalyzer(paFlags, Measurements.ALL_STATS, table, minSize, Double.POSITIVE_INFINITY, minCircularity, 1.0)
+
             #pa.setHideOutputImage(True)
     
             if not pa.analyze(currIP):
@@ -480,7 +493,12 @@ def processImages(cfg, wellName, wellPath, images):
             if table.getColumn(ResultsTable.AREA):
                 for pixArea in table.getColumn(ResultsTable.AREA):
                     newAreas.append(pixArea * cfg.pixelHeight * cfg.pixelWidth)
-            stats[c][AREA] = newAreas
+            stats[c][UM_AREA] = newAreas
+
+            # Store all of the other data
+            for col in range(0,table.getLastColumn()):
+                stats[c][table.getColumnHeading(col)] = table.getColumn(col)
+
             #currIP.hide()
 
     return stats
