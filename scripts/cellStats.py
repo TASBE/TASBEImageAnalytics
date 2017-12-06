@@ -449,7 +449,8 @@ def processImages(cfg, wellName, wellPath, images):
             pa = ParticleAnalyzer(paFlags, Measurements.ALL_STATS, table, minSize, Double.POSITIVE_INFINITY, minCircularity, 1.0)
 
             #pa.setHideOutputImage(True)
-    
+
+            Analyzer.setRedirectImage(resultsImage)
             if not pa.analyze(currIP):
                 print "There was a problem in analyzing", currIP
     
