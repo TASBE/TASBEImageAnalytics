@@ -315,7 +315,7 @@ def processDataset(cfg, datasetName, imgFiles):
             if not stats[c][UM_AREA] :
                 area = 0;
             else:
-                area = max(stats[c][UM_AREA])
+                area = sum(stats[c][UM_AREA])
                 writeStats = True
             channelAreas["totalArea"] = area
         # Handle Fluorscent Channels   
@@ -386,7 +386,7 @@ def processImages(cfg, wellName, wellPath, images):
                 toGray = ImageConverter(currIP)
                 toGray.convertToGray8()
                 minCircularity = 0.001 # We want to identify one big cell ball, so ignore small less circular objects
-                minSize = 40
+                minSize = 500
                 darkBackground = False
             elif (cfg.chanLabel[c] == BLUE) or (cfg.chanLabel[c] == RED) or (cfg.chanLabel[c] == GREEN): #
                 chanIdx = 2
