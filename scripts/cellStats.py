@@ -83,7 +83,7 @@ def getCSVHeader(cfg):
     for chan in cfg.chanLabel:
         if not chan == SKIP and not chan == BRIGHTFIELD:
             outputChans.append(chan)
-    headerString = "frame, brightfield area (um^2), "
+    headerString = "well, brightfield area (um^2), "
     for chan in outputChans:
         headerString += chan + " area (um^2), "
         headerString += "percent " + chan + ", " 
@@ -100,6 +100,7 @@ def main(cfg):
 
     print "Processing input dir " + cfg.inputDir;
     print "Outputting in " + cfg.outputDir;
+    print "\n\n"
 
     # Get all images in the input dir
     imgFiles = glob.glob(os.path.join(cfg.inputDir, "*.tif"))
@@ -179,12 +180,14 @@ def main(cfg):
                 continue;
             updateCfgWithXML(cfg, xmlFile)
             cfg.noZInFile = noZInFile[wellName] or cfg.numZ == 1
-
+        
+        print ("Beginning well " + wellName + "...")
         cfg.printCfg()
         start = time.time()
         dsResults.append(wellName + ", " + processDataset(cfg, wellName, dsImgFiles))
         end = time.time()
         print("Processed well " + wellName + " in " + str(end - start) + " s")
+        print("\n\n")
 
     # Write out summary output
     resultsFile = open(os.path.join(cfg.outputDir, "AllResults.csv"), "w")
@@ -300,7 +303,7 @@ def processDataset(cfg, datasetName, imgFiles):
     stats = processImages(cfg, datasetName, datasetPath, images)
 
     # Output Results
-    resultsFile = open(os.path.join(datasetPath, datasetName + "_results.txt"), "w")
+    resultsFile = open(os.path.join(datasetPath, datasetName + "_results.csv"), "w")
     resultsFile.write(getCSVHeader(cfg));
     channelAreas = dict() 
     for c in range(0, cfg.numChannels) :
@@ -328,10 +331,9 @@ def processDataset(cfg, datasetName, imgFiles):
             continue
         # Write out individual areas per channel
         if writeStats:
-            chanResultsFile = open(os.path.join(datasetPath, datasetName + chanStr + "stats.txt"), "w")
+            chanResultsFile = open(os.path.join(datasetPath, datasetName + chanStr + "stats.csv"), "w")
             numParticles = len(stats[c][UM_AREA])
             # Writer Header
-
             keys = sorted(stats[c].keys())
             chanResultsFile.write(", ".join(keys) + "\n")
             for particle in range(0, numParticles):
@@ -353,7 +355,7 @@ def processDataset(cfg, datasetName, imgFiles):
         if not chan == SKIP and not chan == BRIGHTFIELD:
             outputChans.append(chan)
 
-    resultsString = "%d,\t\t\t %10.4f," % (1, channelAreas["totalArea"])
+    resultsString = "\t\t\t %10.4f," % (channelAreas["totalArea"])
     for chan in outputChans:
         resultsString += "\t\t %10.4f," % channelAreas[chan]
         resultsString += "\t\t %0.4f," % (channelAreas[chan] /  channelAreas["totalArea"])
@@ -530,7 +532,10 @@ class config:
         print("Using Config:")
         print("\tinputDir:\t"    + self.inputDir)
         print("\toutputDir:\t"   + self.outputDir)
-        print("\twellNames:\t" + ", ".join(self.wellNames))
+        if self.wellNames:
+            print("\twellNames:\t" + ", ".join(self.wellNames))
+        if self.chansToSkip:
+            print("\tchansToSkip:\t" + ", ".join(self.chansToSkip))
         print("\tnumChannels:\t" + str(self.numChannels))
         print("\tnumZ:\t\t"        + str(self.numZ))
         print("\tnoZInFile:\t"   + str(self.noZInFile))
