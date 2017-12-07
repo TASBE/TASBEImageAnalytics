@@ -1,24 +1,24 @@
 Tasks & Priorities:
 
 Cell aggregate components python script
-	unit tests: working
-	file config: working
-	extensions:
-	- add red channel					[high]
-	- area vs. integrated brightness			[low]
-	- location & shape statistics (0th, 1st, 2nd moment)	[low]
+    unit tests: working
+    file config: working
+    extensions:
+    - add red channel                                       [Done]
+    - area vs. integrated brightness                        [Need to Discuss]
+    - location & shape statistics (0th, 1st, 2nd moment)    [Done]
 
 Looking at NLS data
-	Tracking						[high]
-	Cell-stats						[med]
+    Tracking                          [high]
+    Cell-stats                        [med]
 
 3D data
-	Tracking						[high]
-	Cell-stats						[med]
-	De-convolution						[low]
+    Tracking                          [high]
+    Cell-stats                        [med]
+    De-convolution                    [low]
 
 Pulling metadata from files
-	pixel units —> um units					[high]
+    pixel units —> um units           [Done]
 
 Quantification of single-cell fluorescence from microscopy beads [low]
 
