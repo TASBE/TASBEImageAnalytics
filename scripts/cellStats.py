@@ -1,7 +1,7 @@
 from ij import IJ, ImagePlus, VirtualStack, WindowManager
 from ij.process import ImageConverter, ImageProcessor, ByteProcessor, ColorProcessor
 from ij.measure import ResultsTable
-from ij.plugin import ChannelSplitter
+from ij.plugin import ChannelSplitter, ImageCalculator
 #from ij.plugin.frame import RoiManager
 from ij.plugin.filter import ParticleAnalyzer, Analyzer
 from ij.measure import Measurements
@@ -419,7 +419,11 @@ def processImages(cfg, wellName, wellPath, images):
             WindowManager.setTempCurrentImage(currIP);
 
             if cfg.debugOutput:
-                IJ.saveAs('png', os.path.join(wellPath, "Processing_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
+                IJ.saveAs('png', os.path.join(wellPath, "Processing_" + wellName + "_" + zStr + "_" + chanStr + ".png"))\
+
+            upperThreshImg = ImagePlus
+            upperThreshImg = currIP.duplicate()
+
             currIP.getProcessor().setAutoThreshold("Default", darkBackground, ImageProcessor.NO_LUT_UPDATE)
             threshRange = currIP.getProcessor().getMaxThreshold() - currIP.getProcessor().getMinThreshold()
             print "\tChannel %14s threshold:\t [%d, %d]\t range: %d" % (cfg.chanLabel[c],currIP.getProcessor().getMinThreshold(), currIP.getProcessor().getMaxThreshold(), threshRange)
@@ -428,10 +432,29 @@ def processImages(cfg, wellName, wellPath, images):
             if threshRange > 230:
                 print "\t\tIgnored Objects due to threshold range!"
                 stats[c][UM_AREA] = []
-                continue 
-
+                continue
             IJ.run(currIP, "Convert to Mask", "")
             IJ.run(currIP, "Close-", "")
+            
+            # Brightfield has an additional thresholding step
+            if cfg.chanLabel[c] == BRIGHTFIELD:
+                if cfg.debugOutput:
+                    IJ.saveAs('png', os.path.join(wellPath, "OrigMask" + wellName + "_" + zStr + "_" + chanStr + ".png"))
+
+                upperThresh = 255 * 0.95
+                upperThreshImg.getProcessor().setThreshold(upperThresh, 255, ImageProcessor.NO_LUT_UPDATE)
+                IJ.run(upperThreshImg, "Convert to Mask", "")
+                IJ.run(upperThreshImg, "Close-", "")
+                if cfg.debugOutput:
+                    WindowManager.setTempCurrentImage(upperThreshImg);
+                    IJ.saveAs('png', os.path.join(wellPath, "UpperThreshMask" + wellName + "_" + zStr + "_" + chanStr + ".png"))
+
+                ic = ImageCalculator()
+                compositeMask = ic.run("OR create", currIP, upperThreshImg)
+                IJ.run(compositeMask, "Close-", "")
+                currIP = compositeMask
+                WindowManager.setTempCurrentImage(currIP);                
+                
             if cfg.debugOutput:
                 WindowManager.setTempCurrentImage(currIP);
                 IJ.saveAs('png', os.path.join(wellPath, "Binary_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
