@@ -335,7 +335,8 @@ def processDataset(cfg, datasetName, imgFiles):
             numParticles = len(stats[c][UM_AREA])
             # Writer Header
             keys = sorted(stats[c].keys())
-            chanResultsFile.write(", ".join(keys) + "\n")
+            headerKeys =  [ key.replace("%", "percent ") for key in keys ]
+            chanResultsFile.write(", ".join(headerKeys) + "\n")
             for particle in range(0, numParticles):
                 line = ""
                 for measure in keys:
