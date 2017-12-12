@@ -510,7 +510,7 @@ def processImages(cfg, wellName, wellPath, images):
                         overlayProcessor.putPixel(x, y, resultsImage.getProcessor().getPixel(x,y))
                     else:
                         overlayProcessor.putPixel(x, y, maskColor)
-            overlayImage = ImagePlus(title, overlayProcessor)
+            overlayImage = ImagePlus("Overlay_" + wellName + "_" + zStr + "_" + chanStr + "_particles", overlayProcessor)
             WindowManager.setTempCurrentImage(overlayImage);
             IJ.saveAs('png', os.path.join(wellPath, "Overlay_" + wellName + "_" + zStr + "_" + chanStr + "_particles.png"))
 
