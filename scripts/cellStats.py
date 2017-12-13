@@ -344,7 +344,7 @@ def processDataset(cfg, datasetName, imgFiles):
                         line += "%10.4f, " % stats[c][measure][particle]
                     else:
                         line += "      N/A, "
-                line += "\n"
+                line = line[0:len(line)-2] + "\n"
                 chanResultsFile.write(line);
             chanResultsFile.close()
 
@@ -357,9 +357,12 @@ def processDataset(cfg, datasetName, imgFiles):
             outputChans.append(chan)
 
     resultsString = "\t\t\t %10.4f," % (channelAreas["totalArea"])
-    for chan in outputChans:
-        resultsString += "\t\t %10.4f," % channelAreas[chan]
-        resultsString += "\t\t %0.4f," % (channelAreas[chan] /  channelAreas["totalArea"])
+    numChans = len(outputChans)
+    for i in range(0, numChans):
+        resultsString += "\t\t %10.4f," % channelAreas[outputChans[i]]
+        resultsString += "\t\t %0.4f" % (channelAreas[outputChans[i]] /  channelAreas["totalArea"])
+        if (i + 1 < numChans) :
+            resultsString += ","
     resultsString += "\n"   
     resultsFile.write(resultsString)
     resultsFile.close()
