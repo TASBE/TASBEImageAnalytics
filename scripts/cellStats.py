@@ -107,7 +107,7 @@ def main(cfg):
     # Ensure we have tifs
     if (len(imgFiles) < 1):
         print "No tif files found in input directory!  Input dir: " + cfg.inputDir
-        quit()
+        quit(1)
 
     # Sort filenames so they are in order by z and ch
     sort_nicely(imgFiles)
@@ -283,7 +283,7 @@ def processDataset(cfg, datasetName, imgFiles):
     # Check for no images
     if not addedImages:
         print "Failed to add any images to chan/z categories! Problem with input dir?"
-        quit()
+        quit(1)
 
     # Load all images
     images = [[0 for z in range(cfg.numZ)] for c in range(cfg.numChannels)]
