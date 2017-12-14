@@ -2,48 +2,19 @@ from ij import IJ, ImagePlus, VirtualStack, WindowManager
 from ij.process import ImageConverter, ImageProcessor, ByteProcessor, ColorProcessor
 from ij.measure import ResultsTable
 from ij.plugin import ChannelSplitter, ImageCalculator
+from ij.gui import Roi
 #from ij.plugin.frame import RoiManager
 from ij.plugin.filter import ParticleAnalyzer, Analyzer
 from ij.measure import Measurements
-from ij.gui import Roi
+
 
 from java.lang import Double
 import os, glob, re, time, sys
 import ConfigParser
 import xml.etree.ElementTree as ElementTree
-#from jarray import zeros
 
-#Recognized colors
-RED = "Red"
-GREEN = "Green"
-BLUE = "Blue"
-YELLOW = "Yellow"
-BRIGHTFIELD = "Gray"
-SKIP = "Skip"
+import ELMConfig
 
-UM_AREA = "Area (um^2)"
-
-#
-# Stackoverflow code for numerically sorting strings
-# https://stackoverflow.com/questions/4623446/how-do-you-sort-files-numerically
-#
-def tryint(s):
-    try:
-        return int(s)
-    except:
-        return s
-
-def alphanum_key(s):
-    """ Turn a string into a list of string and number chunks.
-        "z23a" -> ["z", 23, "a"]
-    """
-    return [ tryint(c) for c in re.split('([0-9]+)', s) ]
-
-def sort_nicely(l):
-    """ Sort the given list in the way that humans expect.
-    """
-    l.sort(key=alphanum_key)
-    
 #
 #
 #
@@ -81,7 +52,7 @@ def printUsage():
 def getCSVHeader(cfg):
     outputChans = [];
     for chan in cfg.chanLabel:
-        if not chan == SKIP and not chan == BRIGHTFIELD:
+        if not chan == ELMConfig.SKIP and not chan == ELMConfig.BRIGHTFIELD:
             outputChans.append(chan)
     headerString = "well, brightfield area (um^2), "
     for chan in outputChans:
@@ -110,7 +81,7 @@ def main(cfg):
         quit(1)
 
     # Sort filenames so they are in order by z and ch
-    sort_nicely(imgFiles)
+    ELMConfig.sort_nicely(imgFiles)
 
     # Get the names of all wells that exist in this dataset/plate
     wellNames = []
@@ -146,7 +117,7 @@ def main(cfg):
         noZInFile[toks[wellIndex]] = zIdx == -1        
 
     uniqueNames = list(set(wellNames))
-    sort_nicely(uniqueNames)
+    ELMConfig.sort_nicely(uniqueNames)
 
     # Try to determine pixel size from Leica properties
     metadataDir = os.path.join(cfg.inputDir, "MetaData")
@@ -217,7 +188,7 @@ def updateCfgWithXML(cfg, xmlFile):
     for chan in chanEle.getchildren():
         newChan = chan.get("LUTName")
         if newChan in cfg.chansToSkip:
-            chanNames.append(SKIP)
+            chanNames.append(ELMConfig.SKIP)
         else:
             chanNames.append(chan.get("LUTName"))
     cfg.chanLabel = chanNames
@@ -311,28 +282,28 @@ def processDataset(cfg, datasetName, imgFiles):
         area = 0;
         writeStats = False
         # Handle brigthfield channel
-        if (cfg.chanLabel[c] == BRIGHTFIELD):
-            if not stats[c][UM_AREA] :
+        if (cfg.chanLabel[c] == ELMConfig.BRIGHTFIELD):
+            if not stats[c][ELMConfig.UM_AREA] :
                 area = 0;
             else:
-                area = sum(stats[c][UM_AREA])
+                area = sum(stats[c][ELMConfig.UM_AREA])
                 writeStats = True
             channelAreas["totalArea"] = area
         # Handle Fluorscent Channels   
-        elif (cfg.chanLabel[c] == BLUE) or (cfg.chanLabel[c] == RED) or (cfg.chanLabel[c] == GREEN) or (cfg.chanLabel[c] == YELLOW): #
-            if not stats[c][UM_AREA] :
+        elif (cfg.chanLabel[c] == ELMConfig.BLUE) or (cfg.chanLabel[c] == ELMConfig.RED) or (cfg.chanLabel[c] == ELMConfig.GREEN) or (cfg.chanLabel[c] == ELMConfig.YELLOW): #
+            if not stats[c][ELMConfig.UM_AREA] :
                 area = 0;
             else:
-                area = sum(stats[c][UM_AREA])
+                area = sum(stats[c][ELMConfig.UM_AREA])
                 writeStats = True
             channelAreas[cfg.chanLabel[c]] = area
         # Skip channel
-        elif (cfg.chanLabel[c] == SKIP):
+        elif (cfg.chanLabel[c] == ELMConfig.SKIP):
             continue
         # Write out individual areas per channel
         if writeStats:
             chanResultsFile = open(os.path.join(datasetPath, datasetName + chanStr + "stats.csv"), "w")
-            numParticles = len(stats[c][UM_AREA])
+            numParticles = len(stats[c][ELMConfig.UM_AREA])
             # Writer Header
             keys = sorted(stats[c].keys())
             headerKeys =  [ key.replace("%", "percent ") for key in keys ]
@@ -353,7 +324,7 @@ def processDataset(cfg, datasetName, imgFiles):
 
     outputChans = [];
     for chan in cfg.chanLabel:
-        if not chan == SKIP and not chan == BRIGHTFIELD:
+        if not chan == ELMConfig.SKIP and not chan == ELMConfig.BRIGHTFIELD:
             outputChans.append(chan)
 
     resultsString = "\t\t\t %10.4f," % (channelAreas["totalArea"])
@@ -386,24 +357,24 @@ def processImages(cfg, wellName, wellPath, images):
                 WindowManager.setTempCurrentImage(currIP);
                 IJ.saveAs('png', os.path.join(wellPath, "Orig_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
             # We need to get to a grayscale image, which will be done differently for different channels
-            if (cfg.chanLabel[c] == BRIGHTFIELD):
+            if (cfg.chanLabel[c] == ELMConfig.BRIGHTFIELD):
                 toGray = ImageConverter(currIP)
                 toGray.convertToGray8()
                 minCircularity = 0.001 # We want to identify one big cell ball, so ignore small less circular objects
                 minSize = 500
                 darkBackground = False
-            elif (cfg.chanLabel[c] == BLUE) or (cfg.chanLabel[c] == RED) or (cfg.chanLabel[c] == GREEN): #
+            elif (cfg.chanLabel[c] == ELMConfig.BLUE) or (cfg.chanLabel[c] == ELMConfig.RED) or (cfg.chanLabel[c] == ELMConfig.GREEN): #
                 chanIdx = 2
-                if (cfg.chanLabel[c] == RED):
+                if (cfg.chanLabel[c] == ELMConfig.RED):
                     chanIdx = 0
-                elif (cfg.chanLabel[c] == GREEN):
+                elif (cfg.chanLabel[c] == ELMConfig.GREEN):
                     chanIdx = 1;
                 imgChanns = ChannelSplitter.split(currIP);
                 currIP = imgChanns[chanIdx];
                 minCircularity = 0.001
                 minSize = 5
                 darkBackground = True
-            elif (cfg.chanLabel[c] == YELLOW):
+            elif (cfg.chanLabel[c] == ELMConfig.YELLOW):
                 title = currIP.getTitle()
                 # Create a new image that consists of the average of the red & green channels
                 width = currIP.getWidth();
@@ -418,7 +389,7 @@ def processImages(cfg, wellName, wellPath, images):
                 minCircularity = 0.001
                 minSize = 5
                 darkBackground = True
-            elif (cfg.chanLabel[c] == SKIP):
+            elif (cfg.chanLabel[c] == ELMConfig.SKIP):
                 continue
             WindowManager.setTempCurrentImage(currIP);
 
@@ -435,13 +406,13 @@ def processImages(cfg, wellName, wellPath, images):
                 print "\tChannel " + cfg.chanLabel[c] + " is not GRAY8, instead type is %d" % currIP.getType()
             if threshRange > 230:
                 print "\t\tIgnored Objects due to threshold range!"
-                stats[c][UM_AREA] = []
+                stats[c][ELMConfig.UM_AREA] = []
                 continue
             IJ.run(currIP, "Convert to Mask", "")
             IJ.run(currIP, "Close-", "")
             
             # Brightfield has an additional thresholding step
-            if cfg.chanLabel[c] == BRIGHTFIELD:
+            if cfg.chanLabel[c] == ELMConfig.BRIGHTFIELD:
                 if cfg.debugOutput:
                     IJ.saveAs('png', os.path.join(wellPath, "OrigMask" + wellName + "_" + zStr + "_" + chanStr + ".png"))
 
@@ -496,15 +467,15 @@ def processImages(cfg, wellName, wellPath, images):
             overlayProcessor = ColorProcessor(width, height)
             currProcessor = currIP.getProcessor()
 
-            if (cfg.chanLabel[c] == BRIGHTFIELD):
+            if (cfg.chanLabel[c] == ELMConfig.BRIGHTFIELD):
                 maskColor = 0x0000ff00
-            elif (cfg.chanLabel[c] == YELLOW):
+            elif (cfg.chanLabel[c] == ELMConfig.YELLOW):
                 maskColor = 0x000000ff
-            elif (cfg.chanLabel[c] == RED):
+            elif (cfg.chanLabel[c] == ELMConfig.RED):
                 maskColor = 0x0000ff00
-            elif (cfg.chanLabel[c] == GREEN):
+            elif (cfg.chanLabel[c] == ELMConfig.GREEN):
                 maskColor = 0x00ff0000
-            elif (cfg.chanLabel[c] == BLUE):
+            elif (cfg.chanLabel[c] == ELMConfig.BLUE):
                 maskColor = 0x00ffff00
 
             for x in range(0, width) :
@@ -523,7 +494,7 @@ def processImages(cfg, wellName, wellPath, images):
             if table.getColumn(ResultsTable.AREA):
                 for pixArea in table.getColumn(ResultsTable.AREA):
                     newAreas.append(pixArea * cfg.pixelHeight * cfg.pixelWidth)
-            stats[c][UM_AREA] = newAreas
+            stats[c][ELMConfig.UM_AREA] = newAreas
 
             # Store all of the other data
             for col in range(0,table.getLastColumn()):
@@ -532,46 +503,7 @@ def processImages(cfg, wellName, wellPath, images):
             #currIP.hide()
 
     return stats
-####
-#
-#  The Config Class - storing configuration info
-#
-####
-class config:
-    numChannels = 4;
-    numZ = 1;
-    noZInFile = True;
-    chanLabel = [SKIP, YELLOW, BLUE, BRIGHTFIELD];
-    chansToSkip = [];
-    inputDir = '';
-    outputDir = '';
-    # We need to avoid the scale bar in the bottom of the image, so set a roi that doesn't include it
-    #analysisRoi = Roi(0,0,512,480)
-    analysisRoi = Roi(0,0,1024,980)
-    # Determines what index the dataset name is within the tokenized filename
-    dsNameIdx = 4;
-    pixelHeight = 1; # in micrometers
-    pixelWidth = 1; # in micrometers
-    wellNames = [] # List of well names to process, empty implies process all
-    debugOutput =  False; # If true, additional info will be output
-    
-    def printCfg(self):
-        print("Using Config:")
-        print("\tinputDir:\t"    + self.inputDir)
-        print("\toutputDir:\t"   + self.outputDir)
-        if self.wellNames:
-            print("\twellNames:\t" + ", ".join(self.wellNames))
-        if self.chansToSkip:
-            print("\tchansToSkip:\t" + ", ".join(self.chansToSkip))
-        print("\tnumChannels:\t" + str(self.numChannels))
-        print("\tnumZ:\t\t"        + str(self.numZ))
-        print("\tnoZInFile:\t"   + str(self.noZInFile))
-        print("\tchanLabel:\t"   + ", ".join(self.chanLabel))
-        print("\tanalysisRoi:\t" + str(self.analysisRoi))
-        print("\tpixelHeight:\t" + str(self.pixelHeight))
-        print("\tpixelWidth:\t" + str(self.pixelWidth))
-        print("\tdebugOutput:\t" + str(self.debugOutput))
-        print("\n")
+
 ####
 #
 #
@@ -607,7 +539,7 @@ if not cfgParser.has_section("Config"):
     print "Config file doesn't contain [Config] section! Path: " + cfgPath;
     quit(1)
 
-cfg = config()
+cfg = ELMConfig.ConfigParams()
 if cfgParser.has_option("Config", "numchannels") :
     numChannels = int(cfgParser.get("Config", "numchannels"))
 else:
