@@ -99,7 +99,8 @@ class ConfigParams:
     ###
     def printCfg(self):
         print("Using Config:")
-        for key in self.params.keys():
+        paramKeys = sorted(self.params.keys())
+        for key in paramKeys:
             if isinstance(self.params[key], list):
                 print("\t" + key + ":\t" + ", ".join(self.params[key]))
             elif isinstance(self.params[key], int) or isinstance(self.params[key], float):
