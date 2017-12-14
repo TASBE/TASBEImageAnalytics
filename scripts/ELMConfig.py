@@ -69,12 +69,12 @@ class ConfigParams:
         self.params[outputDir] = '';
         # We need to avoid the scale bar in the bottom of the image, so set a roi that doesn't include it
         #self.params[analysisRoi] = [0,0,512,480]
-        self.params[analysisRoi] = [0,0,1024,980]
+        #self.params[analysisRoi] = [0,0,1024,980]
         # Determines what index the dataset name is within the tokenized filename
         self.params[dsNameIdx] = 4;
-        self.params[pixelHeight] = 1; # in micrometers
-        self.params[pixelWidth] = 1; # in micrometers
-        self.params[wellNames] = [] # List of well names to process, empty implies process all
+        #self.params[pixelHeight] = 1; # in micrometers
+        #self.params[pixelWidth] = 1; # in micrometers
+        #self.params[wellNames] = [] # List of well names to process, empty implies process all
         self.params[debugOutput] =  False; # If true, additional info will be output
     
     ###
