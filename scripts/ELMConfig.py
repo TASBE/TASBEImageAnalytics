@@ -81,7 +81,10 @@ class ConfigParams:
     #
     ###
     def getValue(self, key):
-        return self.params[key]
+        if key in self.params:
+            return self.params[key]
+        else:
+            return []
 
 
     ###
