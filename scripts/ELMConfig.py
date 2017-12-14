@@ -8,9 +8,8 @@ SKIP = "Skip"
 
 UM_AREA = "Area (um^2)"
 
-from ij.gui import Roi
-
-import re
+import re, ConfigParser
+import xml.etree.ElementTree as ElementTree
 
 #
 # Stackoverflow code for numerically sorting strings
@@ -33,43 +32,191 @@ def sort_nicely(l):
     """
     l.sort(key=alphanum_key)
 
+# PARAMS
+numChannels = "numChannels"
+numZ = "numZ"
+noZInFile = "noZInFile"
+chanLabel ="ChanLabel"
+chansToSkip = "ChansToSkip"
+inputDir = "inputDir"
+outputDir = "outputDir"
+analysisRoi = "analysisRoi"
+dsNameIdx = "dsNameIdx"
+pixelHeight = "pixelheight"
+pixelWidth = "pixelWidth"
+wellNames = "wellNames"
+debugOutput = "debugOutput"
+
 ####
 #
 #  The Config Class - storing configuration info
 #
 ####
 class ConfigParams:
-    numChannels = 4;
-    numZ = 1;
-    noZInFile = True;
-    chanLabel = [SKIP, YELLOW, BLUE, BRIGHTFIELD];
-    chansToSkip = [];
-    inputDir = '';
-    outputDir = '';
-    # We need to avoid the scale bar in the bottom of the image, so set a roi that doesn't include it
-    #analysisRoi = Roi(0,0,512,480)
-    analysisRoi = Roi(0,0,1024,980)
-    # Determines what index the dataset name is within the tokenized filename
-    dsNameIdx = 4;
-    pixelHeight = 1; # in micrometers
-    pixelWidth = 1; # in micrometers
-    wellNames = [] # List of well names to process, empty implies process all
-    debugOutput =  False; # If true, additional info will be output
+    params = dict()
+
+    ###
+    #
+    ### 
+    def __init__(self):
+        self.params[numChannels] = 4;
+        self.params[numZ] = 1;
+        self.params[noZInFile] = True;
+        self.params[chanLabel] = [SKIP, YELLOW, BLUE, BRIGHTFIELD];
+        self.params[chansToSkip] = [];
+        self.params[inputDir] = '';
+        self.params[outputDir] = '';
+        # We need to avoid the scale bar in the bottom of the image, so set a roi that doesn't include it
+        #self.params[analysisRoi] = [0,0,512,480]
+        self.params[analysisRoi] = [0,0,1024,980]
+        # Determines what index the dataset name is within the tokenized filename
+        self.params[dsNameIdx] = 4;
+        self.params[pixelHeight] = 1; # in micrometers
+        self.params[pixelWidth] = 1; # in micrometers
+        self.params[wellNames] = [] # List of well names to process, empty implies process all
+        self.params[debugOutput] =  False; # If true, additional info will be output
     
+    ###
+    #
+    ###
+    def getValue(self, key):
+        return self.params[key]
+
+
+    ###
+    #
+    ###
+    def setValue(self, key, value):
+        self.params[key] = value
+
+
+    ###
+    #
+    ###
     def printCfg(self):
         print("Using Config:")
-        print("\tinputDir:\t"    + self.inputDir)
-        print("\toutputDir:\t"   + self.outputDir)
-        if self.wellNames:
-            print("\twellNames:\t" + ", ".join(self.wellNames))
-        if self.chansToSkip:
-            print("\tchansToSkip:\t" + ", ".join(self.chansToSkip))
-        print("\tnumChannels:\t" + str(self.numChannels))
-        print("\tnumZ:\t\t"        + str(self.numZ))
-        print("\tnoZInFile:\t"   + str(self.noZInFile))
-        print("\tchanLabel:\t"   + ", ".join(self.chanLabel))
-        print("\tanalysisRoi:\t" + str(self.analysisRoi))
-        print("\tpixelHeight:\t" + str(self.pixelHeight))
-        print("\tpixelWidth:\t" + str(self.pixelWidth))
-        print("\tdebugOutput:\t" + str(self.debugOutput))
+        for key in self.params.keys():
+            if isinstance(self.params[key], list):
+                print("\t" + key + ":\t" + ", ".join(self.params[key]))
+            elif isinstance(self.params[key], int) or isinstance(self.params[key], float):
+                print("\t" + key + ":\t" + str(self.params[key]))
+            else:
+                print("\t" + key + ":\t" + self.params[key])
         print("\n")
+
+
+    ###
+    #
+    ###
+    def loadConfig(self, cfgPath):
+        cfgParser = ConfigParser.RawConfigParser(allow_no_value=True)
+        cfgParser.readfp(open(cfgPath))
+
+        if not cfgParser.has_section("Config"):
+            print "Config file doesn't contain [Config] section! Path: " + cfgPath;
+            return False
+
+        if cfgParser.has_option("Config", "numchannels") :
+            numChan = int(cfgParser.get("Config", "numchannels"))
+        else:
+            numChan = self.params[numChannels]
+        for optionRaw in cfgParser.options("Config"):
+            option = optionRaw.lower()
+            if option == inputDir.lower():
+                self.params[inputDir] = cfgParser.get("Config", option)
+            elif option == outputDir.lower():
+                self.params[outputDir] = cfgParser.get("Config", option)
+            elif option == numChannels.lower():
+                self.params[numChannels] = int(cfgParser.get("Config", option))
+            elif option == numZ.lower():
+                self.params[numZ] = int(cfgParser.get("Config", option))
+            elif option == noZInFile.lower():
+                self.params[noZInFile]  = cfgParser.get("Config", option) == "True"
+            elif option == chansToSkip.lower():
+                toks = cfgParser.get("Config", option).split(",")
+                self.params[chansToSkip] = []
+                for tok in toks:
+                    self.params[chansToSkip].append(tok.strip())
+            elif option == chanLabel.lower():
+                toks = cfgParser.get("Config", option).split(",")
+                if not len(toks) == numChan:
+                    print "Improper value for chanLabel config, expected " + numChan + " comma separated values!  Received " + str(len(toks))
+                self.params[chanLabel] = []
+                for tok in toks:
+                    self.params[chanLabel].append(tok.strip())
+            elif option == analysisRoi.lower():
+                toks = cfgParser.get("Config", option).split(",")
+                if not len(toks) == 4:
+                    print "Improper value for analysisRoi config, expected " + 4+ " comma separated values!  Received " + str(len(toks))
+                self.params[analysisRoi] = [toks[0],toks[1],toks[2],toks[3]]
+            elif option == dsNameIdx.lower():
+                self.params[dsNameIdx] = int(cfgParser.get("Config", option))
+            elif option == wellNames.lower():
+                toks = cfgParser.get("Config", option).split(",")
+                for t in toks:
+                    self.params[wellNames].append(t)
+            elif option == debugOutput.lower():
+                self.params[debugOutput] = cfgParser.get("Config", option) == "True"
+            else:
+                print "Warning, unrecognized config option: " + option   
+        
+        return True
+
+
+    ####
+    #
+    # Given a path to a Leica properties XML, read in some configuration
+    #
+    ####    
+    def updateCfgWithXML(self, xmlFile):
+        xmlRoot = ElementTree.parse(xmlFile).getroot()
+        imgEle = xmlRoot.find("Image")
+        imgDescEle = imgEle.find("ImageDescription")
+
+        # Pull channel info from XML
+        chanEle = imgDescEle.find("Channels")
+        self.params[numChannels] = len(chanEle.getchildren())
+        chanNames = []
+        for chan in chanEle.getchildren():
+            newChan = chan.get("LUTName")
+            if newChan in self.params[chansToSkip]:
+                chanNames.append(SKIP)
+            else:
+                chanNames.append(chan.get("LUTName"))
+        self.params[chanLabel] = chanNames
+
+        # Pull dimension info from XML 
+        dimsEle = imgDescEle.find("Dimensions")
+        for dimEle in dimsEle.getchildren():
+            numElementsInDim = int(dimEle.get("NumberOfElements"))
+            dimLength = float(dimEle.get("Length"))
+            dimUnit = dimEle.get("Unit")
+            lenMultiplier = self.getMultiplier(dimUnit) # Ensures length is in micrometers
+            if dimEle.get("DimID") == "X":
+                self.params[pixelWidth] = (dimLength * lenMultiplier) / numElementsInDim
+            elif dimEle.get("DimID") == "Y":
+                self.params[pixelHeight] = (dimLength * lenMultiplier) / numElementsInDim
+            elif dimEle.get("DimID") == "Z":
+                self.params[numZ] = numElementsInDim
+
+
+    ####
+    #
+    # Get the multiplier to turn the given unit into micrometers
+    #
+    ####
+    def getMultiplier(self, unit):
+        mult = 1;
+        if unit == "m":
+            mult = 1e6;
+        elif unit == "cm":
+            mult = 1e4;
+        elif unit == "mm":
+            mult = 1e3;
+        elif unit == "um":
+            mult = 1;
+        elif unit == "nm":
+            mult = 1e-3;
+        return mult;
+
+
