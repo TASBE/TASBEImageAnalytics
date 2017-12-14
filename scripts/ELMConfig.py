@@ -202,6 +202,7 @@ class ConfigParams:
                 self.params[pixelHeight] = (dimLength * lenMultiplier) / numElementsInDim
             elif dimEle.get("DimID") == "Z":
                 self.params[numZ] = numElementsInDim
+                self.params[pixelDepth] = (dimLength * lenMultiplier) / numElementsInDim
 
 
     ####
