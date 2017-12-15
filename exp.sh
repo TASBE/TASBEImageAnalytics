@@ -12,6 +12,8 @@ FIJI_PATH=/home/nwalczak/workspace/fiji/Fiji.app
 
 start=`date +%s`
 
+export CLASSPATH=$PWD:$PWD/scripts:${CLASSPATH}
+
 #cholka_dots_dox
 ${FIJI_PATH}/ImageJ-linux64 --ij2 --headless --run scripts/cellStats.py cfgPath=\"/media/nwalczak/XFS_Test/Resilio\ Sync/Resilio/2017_09_20\ cholka_dots_dox_gradient/plate2/plate2Config.ini\"
 checkFailure "cholka_dots_dox_gradient plate2"
