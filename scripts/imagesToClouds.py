@@ -76,7 +76,7 @@ def main(cfg):
     timeRE = re.compile("^t[0-9]+$")
     zRE    = re.compile("z[0-9]+$")
     chRE   = re.compile("^ch[0-9]+$")
-    wellRE   = re.compile("^[A-Z][0-9]+$")
+    wellRE   = re.compile("^[a-zA-Z][0-9]+$")
     for filePath in imgFiles:
         fileName = os.path.basename(filePath)
         toks = os.path.splitext(fileName)[0].split("_")
