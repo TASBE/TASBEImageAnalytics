@@ -186,7 +186,7 @@ def processDataset(cfg, datasetName, imgFiles):
     for c in range(0, cfg.getValue(ELMConfig.numChannels)):
         chanStr = 'ch%(channel)02d' % {"channel" : c};
         for z in range(0, cfg.getValue(ELMConfig.numZ)):
-            zStr =  'z%(depth)02d' % {"depth" : z};
+            zStr = cfg.getZStr(z);
             for imgPath in imgFiles:
                 fileName = os.path.basename(imgPath)
                 if chanStr in fileName and (cfg.getValue(ELMConfig.noZInFile) or zStr in fileName):
@@ -296,7 +296,7 @@ def processImages(cfg, wellName, wellPath, images):
     for c in range(0, cfg.getValue(ELMConfig.numChannels)):
         chanStr = 'ch%(channel)02d' % {"channel" : c};
         for z in range(0, cfg.getValue(ELMConfig.numZ)):
-            zStr =  'z%(depth)02d' % {"depth" : z};
+            zStr = cfg.getZStr(z);
             currIP = images[c][z];
             resultsImage = currIP.duplicate()
             if cfg.getValue(ELMConfig.debugOutput):
