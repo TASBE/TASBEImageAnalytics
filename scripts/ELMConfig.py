@@ -109,6 +109,15 @@ class ConfigParams:
                 print("\t" + key + ":\t" + self.params[key])
         print("\n")
 
+    ###
+    #  Get the Z string in the filename, given the current Z and using the configs max num Z
+    ###
+    def getZStr(self, z):
+        if self.params[numZ] < 100:
+            return 'z%(depth)02d' % {"depth" : z};
+        else:
+            return 'z%(depth)03d' % {"depth" : z};
+
 
     ###
     #
