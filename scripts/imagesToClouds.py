@@ -149,10 +149,6 @@ def main(cfg):
 ####
 def processDataset(cfg, datasetName, imgFiles):
     datasetPath = os.path.join(cfg.getValue(ELMConfig.outputDir), datasetName)
-    
-    firstImage = IJ.openImage(imgFiles[0]);
-    imgWidth = firstImage.getWidth();
-    imgHeight = firstImage.getHeight();
 
     # Count how many images we have for each channel/Z slice
     imgFileCats = [[[] for z in range(cfg.getValue(ELMConfig.numZ))] for c in range(cfg.getValue(ELMConfig.numChannels))]
@@ -160,35 +156,21 @@ def processDataset(cfg, datasetName, imgFiles):
     for c in range(0, cfg.getValue(ELMConfig.numChannels)):
         chanStr = 'ch%(channel)02d' % {"channel" : c};
         for z in range(0, cfg.getValue(ELMConfig.numZ)):
-            zStr =  'z%(depth)02d' % {"depth" : z};
+            zStr = cfg.getZStr(z);
             for imgPath in imgFiles:
                 fileName = os.path.basename(imgPath)
                 if chanStr in fileName and (cfg.getValue(ELMConfig.noZInFile) or zStr in fileName):
                     addedImages = True
-                    imgFileCats[c][z].append(fileName)
+                    imgFileCats[c][z] = imgPath
 
     # Check for no images
     if not addedImages:
         print "Failed to add any images to chan/z categories! Problem with input dir?"
         quit(1)
 
-    # Load all images
-    images = [[0 for z in range(cfg.getValue(ELMConfig.numZ))] for c in range(cfg.getValue(ELMConfig.numChannels))]
+    # Process all images
     for c in range(0, cfg.getValue(ELMConfig.numChannels)):
-        for z in range(0, cfg.getValue(ELMConfig.numZ)):
-            if not imgFileCats[c][z]:
-                continue;
-            
-            imSeq = VirtualStack(imgWidth, imgHeight, firstImage.getProcessor().getColorModel(), cfg.getValue(ELMConfig.inputDir))
-            for fileName in imgFileCats[c][z]:
-                imSeq.addSlice(fileName);
-            images[c][z] = ImagePlus()
-            images[c][z].setStack(imSeq)
-            images[c][z].setTitle(datasetName + ", channel " + str(c) + ", z " + str(z))
-    
-    # Process images
-    processImages(cfg, datasetName, datasetPath, images)
-
+        processImages(cfg, datasetName, datasetPath, c, imgFileCats[c])
 
 
 ####
@@ -196,161 +178,161 @@ def processDataset(cfg, datasetName, imgFiles):
 #  All of the processing that happens for each image
 #
 ####
-def processImages(cfg, wellName, wellPath, images):
-    
-    pointsPerChan = dict()
-    for c in range(0, cfg.getValue(ELMConfig.numChannels)):
-        chanStr = 'ch%(channel)02d' % {"channel" : c};
-        chanName = cfg.getValue(ELMConfig.chanLabel)[c]
-        pointsPerChan[chanName] = []
-        print "\tProcessing channel: " + chanName
-        for z in range(0, cfg.getValue(ELMConfig.numZ)):
-            zStr =  'z%(depth)02d' % {"depth" : z};
-            currIP = images[c][z];
-            resultsImage = currIP.duplicate()
-            if cfg.getValue(ELMConfig.debugOutput):
-                WindowManager.setTempCurrentImage(currIP);
-                IJ.saveAs('png', os.path.join(wellPath, "Orig_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
-            # We need to get to a grayscale image, which will be done differently for different channels
-            if (chanName == ELMConfig.BRIGHTFIELD):
-                toGray = ImageConverter(currIP)
-                toGray.convertToGray8()
-                darkBackground = False
-            elif (chanName == ELMConfig.BLUE) \
-                    or (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.RED) \
-                    or (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.GREEN): #
-                chanIdx = 2
-                if (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.RED):
-                    chanIdx = 0
-                elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.GREEN):
-                    chanIdx = 1;
-                imgChanns = ChannelSplitter.split(currIP);
-                currIP = imgChanns[chanIdx];
-                darkBackground = True
-            elif (chanName == ELMConfig.YELLOW):
-                title = currIP.getTitle()
-                # Create a new image that consists of the average of the red & green channels
-                width = currIP.getWidth();
-                height = currIP.getHeight();
-                newPix = ByteProcessor(width, height)
-                for x in range(0, width) :
-                    for y in range(0,height) :
-                        currPix = currIP.getPixel(x,y);
-                        newPix.putPixel(x, y, (currPix[0] + currPix[1]) / 2)
+def processImages(cfg, wellName, wellPath, c, imgFiles):
 
-                currIP = ImagePlus(title, newPix)
-                darkBackground = True
-            elif (chanName == ELMConfig.SKIP):
-                continue
+    points = []
+    chanStr = 'ch%(channel)02d' % {"channel" : c};
+    chanName = cfg.getValue(ELMConfig.chanLabel)[c]
+    print "\tProcessing channel: " + chanName
+    for z in range(0, cfg.getValue(ELMConfig.numZ)):
+        zStr = cfg.getZStr(z);
+        currIP = IJ.openImage(imgFiles[z])
+        if cfg.getValue(ELMConfig.debugOutput):
             WindowManager.setTempCurrentImage(currIP);
-
-            if cfg.getValue(ELMConfig.debugOutput):
-                IJ.saveAs('png', os.path.join(wellPath, "Processing_" + wellName + "_" + zStr + "_" + chanStr + ".png"))\
-
-            upperThreshImg = ImagePlus
-            upperThreshImg = currIP.duplicate()
-
-            currIP.getProcessor().setAutoThreshold("Default", darkBackground, ImageProcessor.NO_LUT_UPDATE)
-            threshRange = currIP.getProcessor().getMaxThreshold() - currIP.getProcessor().getMinThreshold()
-            if currIP.getType() != ImagePlus.GRAY8 :
-                print "\tChannel " + cfg.getValue(ELMConfig.chanLabel)[c] + " is not GRAY8, instead type is %d" % currIP.getType()
-            if threshRange > 230:
-                print "\t\tZ = " + str(z) + ": Ignored Objects due to threshold range!"
-                continue
-            IJ.run(currIP, "Convert to Mask", "")
-            IJ.run(currIP, "Close-", "")
-            
-            # Brightfield has an additional thresholding step
-            if cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.BRIGHTFIELD:
-                if cfg.getValue(ELMConfig.debugOutput):
-                    IJ.saveAs('png', os.path.join(wellPath, "OrigMask" + wellName + "_" + zStr + "_" + chanStr + ".png"))
-
-                upperThresh = 255 * 0.95
-                upperThreshImg.getProcessor().setThreshold(upperThresh, 255, ImageProcessor.NO_LUT_UPDATE)
-                IJ.run(upperThreshImg, "Convert to Mask", "")
-                IJ.run(upperThreshImg, "Close-", "")
-                if cfg.getValue(ELMConfig.debugOutput):
-                    WindowManager.setTempCurrentImage(upperThreshImg);
-                    IJ.saveAs('png', os.path.join(wellPath, "UpperThreshMask" + wellName + "_" + zStr + "_" + chanStr + ".png"))
-
-                ic = ImageCalculator()
-                compositeMask = ic.run("OR create", currIP, upperThreshImg)
-                IJ.run(compositeMask, "Close-", "")
-                currIP = compositeMask
-                WindowManager.setTempCurrentImage(currIP);                
-                
-            if cfg.getValue(ELMConfig.debugOutput):
-                WindowManager.setTempCurrentImage(currIP);
-                IJ.saveAs('png', os.path.join(wellPath, "Binary_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
-
-            if cfg.getValue(ELMConfig.debugOutput):
-                WindowManager.setTempCurrentImage(resultsImage);
-                IJ.saveAs('png', os.path.join(wellPath, "resultsImage" + wellName + "_" + zStr + "_" + chanStr + ".png"))
-                WindowManager.setTempCurrentImage(currIP);
-                
+            IJ.saveAs('png', os.path.join(wellPath, "Orig_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
+        # We need to get to a grayscale image, which will be done differently for different channels
+        if (chanName == ELMConfig.BRIGHTFIELD):
+            toGray = ImageConverter(currIP)
+            toGray.convertToGray8()
+            darkBackground = False
+        elif (chanName == ELMConfig.BLUE) \
+                or (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.RED) \
+                or (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.GREEN): #
+            chanIdx = 2
+            if (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.RED):
+                chanIdx = 0
+            elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.GREEN):
+                chanIdx = 1;
+            imgChanns = ChannelSplitter.split(currIP);
+            currIP.close()
+            currIP = imgChanns[chanIdx];
+            darkBackground = True
+        elif (chanName == ELMConfig.YELLOW):
+            title = currIP.getTitle()
+            # Create a new image that consists of the average of the red & green channels
             width = currIP.getWidth();
             height = currIP.getHeight();
-            currProcessor = currIP.getProcessor()
-
-            if (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.BRIGHTFIELD):
-                red   = 128
-                green = 128
-                blue  = 128
-            elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.YELLOW):
-                red   = 255
-                green = 255
-                blue  = 0
-            elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.RED):
-                red   = 255
-                green = 0
-                blue  = 0
-            elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.GREEN):
-                red   = 0
-                green = 255
-                blue  = 0
-            elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.BLUE):
-                red   = 0
-                green = 0
-                blue  = 255
-
-            heightScale = (z + 1.0) / cfg.getValue(ELMConfig.numZ) 
+            newPix = ByteProcessor(width, height)
             for x in range(0, width) :
                 for y in range(0,height) :
-                    currPix = currProcessor.getPixel(x,y);
-                    if not currPix == 0x00000000:
-                        ptX = x * cfg.getValue(ELMConfig.pixelWidth)
-                        ptY = y * cfg.getValue(ELMConfig.pixelHeight)
-                        ptZ = z * cfg.getValue(ELMConfig.pixelDepth);
-                        red *= heightScale 
-                        green *= heightScale
-                        blue *= heightScale
-                        pointsPerChan[chanName].append("%f %f %f %d %d %d\n" % (ptX, ptY, ptZ, red, green, blue))
-        print ""
+                    currPix = currIP.getPixel(x,y);
+                    newPix.putPixel(x, y, (currPix[0] + currPix[1]) / 2)
+            currIP.close()
+            currIP = ImagePlus(title, newPix)
+            darkBackground = True
+        elif (chanName == ELMConfig.SKIP):
+            continue
+        WindowManager.setTempCurrentImage(currIP);
 
-    for chan in pointsPerChan.keys():
-        resultsFile = open(os.path.join(wellPath, chan + "_cloud.ply"), "w")
+        if cfg.getValue(ELMConfig.debugOutput):
+            IJ.saveAs('png', os.path.join(wellPath, "Processing_" + wellName + "_" + zStr + "_" + chanStr + ".png"))\
+
+        upperThreshImg = currIP.duplicate()
+
+        currIP.getProcessor().setAutoThreshold("Default", darkBackground, ImageProcessor.NO_LUT_UPDATE)
+        threshRange = currIP.getProcessor().getMaxThreshold() - currIP.getProcessor().getMinThreshold()
+        if currIP.getType() != ImagePlus.GRAY8 :
+            print "\tChannel " + cfg.getValue(ELMConfig.chanLabel)[c] + " is not GRAY8, instead type is %d" % currIP.getType()
+        if threshRange > 230:
+            print "\t\tZ = " + str(z) + ": Ignored Objects due to threshold range!"
+            continue
+        IJ.run(currIP, "Convert to Mask", "")
+        IJ.run(currIP, "Close-", "")
         
-        resultsFile.write("ply\n")
-        resultsFile.write("format ascii 1.0\n")
-        resultsFile.write("element vertex " + str(len(pointsPerChan[chan])) + "\n")
-        resultsFile.write("property float x\n")
-        resultsFile.write("property float y\n")
-        resultsFile.write("property float z\n")
-        resultsFile.write("property uchar red\n")
-        resultsFile.write("property uchar green\n")
-        resultsFile.write("property uchar blue\n")
-        resultsFile.write("end_header\n")
-        for line in pointsPerChan[chan]:
-            resultsFile.write(line)
-        resultsFile.close()
+        # Brightfield has an additional thresholding step
+        if cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.BRIGHTFIELD:
+            if cfg.getValue(ELMConfig.debugOutput):
+                IJ.saveAs('png', os.path.join(wellPath, "OrigMask" + wellName + "_" + zStr + "_" + chanStr + ".png"))
+
+            upperThresh = 255 * 0.95
+            upperThreshImg.getProcessor().setThreshold(upperThresh, 255, ImageProcessor.NO_LUT_UPDATE)
+            IJ.run(upperThreshImg, "Convert to Mask", "")
+            IJ.run(upperThreshImg, "Close-", "")
+            if cfg.getValue(ELMConfig.debugOutput):
+                WindowManager.setTempCurrentImage(upperThreshImg);
+                IJ.saveAs('png', os.path.join(wellPath, "UpperThreshMask" + wellName + "_" + zStr + "_" + chanStr + ".png"))
+
+            ic = ImageCalculator()
+            compositeMask = ic.run("OR create", currIP, upperThreshImg)
+            IJ.run(compositeMask, "Close-", "")
+            currIP.close()
+            currIP = compositeMask
+            WindowManager.setTempCurrentImage(currIP);
+
+        if cfg.getValue(ELMConfig.debugOutput):
+            WindowManager.setTempCurrentImage(currIP);
+            IJ.saveAs('png', os.path.join(wellPath, "Binary_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
+
+        if (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.BRIGHTFIELD):
+            red   = 128
+            green = 128
+            blue  = 128
+        elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.YELLOW):
+            red   = 255
+            green = 255
+            blue  = 0
+        elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.RED):
+            red   = 255
+            green = 0
+            blue  = 0
+        elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.GREEN):
+            red   = 0
+            green = 255
+            blue  = 0
+        elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.BLUE):
+            red   = 0
+            green = 0
+            blue  = 255
+
+        currProcessor = currIP.getProcessor()
+        heightScale = (z + 1.0) / cfg.getValue(ELMConfig.numZ) 
+        for x in range(0, currIP.getWidth()) :
+            for y in range(0,currIP.getHeight()) :
+                if not currProcessor.get(x,y) == 0x00000000:
+                    ptX = x * cfg.getValue(ELMConfig.pixelWidth)
+                    ptY = y * cfg.getValue(ELMConfig.pixelHeight)
+                    ptZ = z * cfg.getValue(ELMConfig.pixelDepth);
+                    red *= heightScale 
+                    green *= heightScale
+                    blue *= heightScale
+                    points.append([ptX, ptY, ptZ, red, green, blue])
+
+        currIP.close()
+        upperThreshImg.close()
+
+    print ""
+
+    resultsFile = open(os.path.join(wellPath, chanName + "_cloud.ply"), "w")
+    
+    resultsFile.write("ply\n")
+    resultsFile.write("format ascii 1.0\n")
+    resultsFile.write("element vertex " + str(len(points)) + "\n")
+    resultsFile.write("property float x\n")
+    resultsFile.write("property float y\n")
+    resultsFile.write("property float z\n")
+    resultsFile.write("property uchar red\n")
+    resultsFile.write("property uchar green\n")
+    resultsFile.write("property uchar blue\n")
+    resultsFile.write("end_header\n")
+    for line in points:
+        resultsFile.write("%f %f %f %d %d %d\n" % (line[0], line[1], line[2], line[3], line[4], line[5]))
+    resultsFile.close()
 
 
 ####
 #
 #
 ####
-if __name__ == "__main__":
+# Checking for __main__ will cause running from ImageJ to fail        
+#if __name__ == "__main__":
 
+#@String cfgPath
+
+# Check to see if cfgPath is defined
+# They could be defined if running from ImageJ directly
+try:
+    cfgPath
+except NameError:
     argc = len(sys.argv) - 1
     if not argc == 1:
         print "Expected 1 argument, received " + str(argc) + "!"
@@ -358,17 +340,17 @@ if __name__ == "__main__":
         quit(1)
     cfgPath = sys.argv[1]
     
-    # Load the configuration file
-    cfg = ELMConfig.ConfigParams()
-    rv = cfg.loadConfig(cfgPath)
-    if not rv:
-        quit(1)
-    
-    # Print Config
-    cfg.printCfg()
+# Load the configuration file
+cfg = ELMConfig.ConfigParams()
+rv = cfg.loadConfig(cfgPath)
+if not rv:
+    quit(1)
 
-    start = time.time()
-    main(cfg)
-    end = time.time()
+# Print Config
+cfg.printCfg()
 
-    print("Processed all images in " + str(end - start) + " s")
+start = time.time()
+main(cfg)
+end = time.time()
+
+print("Processed all images in " + str(end - start) + " s")
