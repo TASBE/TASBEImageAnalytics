@@ -4,7 +4,7 @@ checkFailure() {
     if [ ! $? -eq 0 ]
       then
         echo "Failed on $1"
-        return 1
+        exit 1
     fi
 }
 
