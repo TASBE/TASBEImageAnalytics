@@ -7,11 +7,13 @@ from ij.gui import Roi
 from ij.plugin.filter import ParticleAnalyzer, Analyzer
 from ij.measure import Measurements
 
-
 from java.lang import Double
 import os, glob, re, time, sys
 
-
+# I'm not certain why, but when run in ImageJ it doesn't seem to adhere to the CLASSPATH env variable
+# This ensures that CLASSPATH is explicitly on the module search path, which is required for ELMConfig to resolve
+for path in os.environ['CLASSPATH'].split(os.pathsep):
+    sys.path.append(path)
 
 import ELMConfig
 
