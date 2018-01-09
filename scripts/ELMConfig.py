@@ -48,6 +48,8 @@ pixelWidth = "pixelWidth"
 wellNames = "wellNames"
 debugOutput = "debugOutput"
 pcloudColorThresh = "pcloudColorThresh"
+pcloudExclusionX  = "pcloudExclusionX"
+pcloudExclusionY  = "pcloudExclusionY"
 
 ####
 #
@@ -152,6 +154,10 @@ class ConfigParams:
                 self.params[numZ] = int(cfgParser.get("Config", option))
             elif option == pcloudColorThresh.lower():
                 self.params[pcloudColorThresh] = int(cfgParser.get("Config", option))
+            elif option == pcloudExclusionX.lower():
+                self.params[pcloudExclusionX] = int(cfgParser.get("Config", option))
+            elif option == pcloudExclusionY.lower():
+                self.params[pcloudExclusionY] = int(cfgParser.get("Config", option))
             elif option == noZInFile.lower():
                 self.params[noZInFile]  = cfgParser.get("Config", option) == "True"
             elif option == chansToSkip.lower():

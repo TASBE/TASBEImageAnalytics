@@ -288,8 +288,14 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
                     red   = colorPix[0] 
                     green = colorPix[1]
                     blue  = colorPix[2]
-                    if (not cfg.hasValue(ELMConfig.pcloudColorThresh) \
-                            or colorPix[chanPixBand] > cfg.getValue(ELMConfig.pcloudColorThresh)):
+                    # Check that point meets color threshold
+                    pcloudColorThresh = not cfg.hasValue(ELMConfig.pcloudColorThresh) \
+                        or colorPix[chanPixBand] > cfg.getValue(ELMConfig.pcloudColorThresh)
+                    # Check that point isn't in exclusion zone
+                    pcloudExclusion = not (cfg.hasValue(ELMConfig.pcloudExclusionX) and cfg.hasValue(ELMConfig.pcloudExclusionY)) \
+                        or (ptX < cfg.getValue(ELMConfig.pcloudExclusionX) or ptY < cfg.getValue(ELMConfig.pcloudExclusionY))
+
+                    if (pcloudColorThresh and pcloudExclusion):
                         points.append([ptX, ptY, ptZ, red, green, blue])
 
         currIP.close()
