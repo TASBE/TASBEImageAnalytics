@@ -5,7 +5,7 @@ Cell aggregate components python script
     file config: working
     extensions:
     - add red channel                                       [Done]
-    - area vs. integrated brightness                        [Need to Discuss]
+    - area vs. integrated brightness                        [Done]
     - location & shape statistics (0th, 1st, 2nd moment)    [Done]
 
 Looking at NLS data
