@@ -13,12 +13,11 @@ CFG_PATH_NOESC="/media/nwalczak/XFS_Test/Resilio Sync/Resilio/2017_12_05 fine_st
 CFG_PATH="/home/nwalczak/workspace/elm/elm-git/testLN"
 
 start=`date +%s`
-
 export CLASSPATH=$PWD:$PWD/scripts:${CLASSPATH}
 for cfgFile in "${CFG_PATH}"/*.ini
   do
     echo ${cfgFile}
-    ${FIJI_PATH}/ImageJ-linux64 --heap 8192M --headless --run scripts/imagesToClouds.py cfgPath=\"${cfgFile}\"
+    ${FIJI_PATH}/ImageJ-linux64 --heap 10240M --headless --run scripts/imagesToClouds.py cfgPath=\"${cfgFile}\"
     checkFailure "${cfgFile}"
 done
 
