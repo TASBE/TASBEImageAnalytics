@@ -1,6 +1,5 @@
-from ij import IJ, ImagePlus, VirtualStack, WindowManager
-from ij.process import ImageConverter, ImageProcessor, ByteProcessor, ColorProcessor
-from ij.measure import ResultsTable
+from ij import IJ, ImagePlus, WindowManager
+from ij.process import ImageConverter, ImageProcessor, ByteProcessor
 from ij.plugin import ChannelSplitter, ImageCalculator
 
 from java.lang import Double
@@ -170,6 +169,8 @@ def processDataset(cfg, datasetName, imgFiles):
 
     # Process all images
     for c in range(0, cfg.getValue(ELMConfig.numChannels)):
+        if (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.SKIP):
+            continue;
         processImages(cfg, datasetName, datasetPath, c, imgFileCats[c])
 
 
@@ -183,10 +184,23 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
     points = []
     chanStr = 'ch%(channel)02d' % {"channel" : c};
     chanName = cfg.getValue(ELMConfig.chanLabel)[c]
+    if (chanName == ELMConfig.RED):
+        chanPixBand = 0;
+    elif (chanName == ELMConfig.GREEN):
+        chanPixBand = 1;
+    elif (chanName == ELMConfig.BLUE):
+        chanPixBand = 2;
+    elif (chanName == ELMConfig.YELLOW):
+        chanPixBand = 0;
+    else:
+        chanPixBand = -1;
+
+    chanPixBand
     print "\tProcessing channel: " + chanName
     for z in range(0, cfg.getValue(ELMConfig.numZ)):
         zStr = cfg.getZStr(z);
         currIP = IJ.openImage(imgFiles[z])
+        origImage = currIP.duplicate();
         if cfg.getValue(ELMConfig.debugOutput):
             WindowManager.setTempCurrentImage(currIP);
             IJ.saveAs('png', os.path.join(wellPath, "Orig_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
@@ -263,41 +277,23 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
             WindowManager.setTempCurrentImage(currIP);
             IJ.saveAs('png', os.path.join(wellPath, "Binary_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
 
-        if (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.BRIGHTFIELD):
-            red   = 128
-            green = 128
-            blue  = 128
-        elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.YELLOW):
-            red   = 255
-            green = 255
-            blue  = 0
-        elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.RED):
-            red   = 255
-            green = 0
-            blue  = 0
-        elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.GREEN):
-            red   = 0
-            green = 255
-            blue  = 0
-        elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.BLUE):
-            red   = 0
-            green = 0
-            blue  = 255
-
         currProcessor = currIP.getProcessor()
-        heightScale = (z + 1.0) / cfg.getValue(ELMConfig.numZ) 
         for x in range(0, currIP.getWidth()) :
             for y in range(0,currIP.getHeight()) :
                 if not currProcessor.get(x,y) == 0x00000000:
                     ptX = x * cfg.getValue(ELMConfig.pixelWidth)
                     ptY = y * cfg.getValue(ELMConfig.pixelHeight)
                     ptZ = z * cfg.getValue(ELMConfig.pixelDepth);
-                    red *= heightScale 
-                    green *= heightScale
-                    blue *= heightScale
-                    points.append([ptX, ptY, ptZ, red, green, blue])
+                    colorPix = origImage.getPixel(x,y)
+                    red   = colorPix[0] 
+                    green = colorPix[1]
+                    blue  = colorPix[2]
+                    if (not cfg.hasValue(ELMConfig.pcloudColorThresh) \
+                            or colorPix[chanPixBand] > cfg.getValue(ELMConfig.pcloudColorThresh)):
+                        points.append([ptX, ptY, ptZ, red, green, blue])
 
         currIP.close()
+        origImage.close()
         upperThreshImg.close()
 
     print ""

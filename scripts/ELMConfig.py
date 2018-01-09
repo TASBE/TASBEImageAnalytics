@@ -47,6 +47,7 @@ pixelDepth = "pixelDepth"
 pixelWidth = "pixelWidth"
 wellNames = "wellNames"
 debugOutput = "debugOutput"
+pcloudColorThresh = "pcloudColorThresh"
 
 ####
 #
@@ -93,6 +94,11 @@ class ConfigParams:
     def setValue(self, key, value):
         self.params[key] = value
 
+    ###
+    #
+    ###
+    def hasValue(self, key):
+        return key in self.params
 
     ###
     #
@@ -144,6 +150,8 @@ class ConfigParams:
                 self.params[numChannels] = int(cfgParser.get("Config", option))
             elif option == numZ.lower():
                 self.params[numZ] = int(cfgParser.get("Config", option))
+            elif option == pcloudColorThresh.lower():
+                self.params[pcloudColorThresh] = int(cfgParser.get("Config", option))
             elif option == noZInFile.lower():
                 self.params[noZInFile]  = cfgParser.get("Config", option) == "True"
             elif option == chansToSkip.lower():
