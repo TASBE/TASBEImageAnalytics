@@ -30,11 +30,15 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 
+#include <boost/filesystem.hpp>
+
 #include "core/MicroscopeProperties.h"
 
 using namespace std;
 using namespace pcl;
 using namespace cv;
+
+namespace fs = boost::filesystem;
 
 typedef pcl::PointXYZRGB PointT;
 typedef pcl::PointCloud<PointT> Cloud;
@@ -69,6 +73,12 @@ int main(const int argc, const char **argv) {
 
 	string inFile = argv[1];
 	string outPath = argv[3];
+
+	// Ensure output dir exists
+	fs::path boostOutPath(outPath);
+	if (!fs::exists(boostOutPath)) {
+		fs::create_directory(boostOutPath);
+	}
 
 	MicroscopeProperties scopeProps;
 	scopeProps.readFromXML(argv[2]);
