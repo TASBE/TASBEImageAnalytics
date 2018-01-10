@@ -30,6 +30,8 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 
+#include "core/MicroscopeProperties.h"
+
 using namespace std;
 using namespace pcl;
 using namespace cv;
@@ -44,21 +46,36 @@ Cloud::ConstPtr cloud_(new Cloud);
 Cloud::Ptr prevCloud;
 Cloud::Ptr totalCloud;
 
+void printUsage() {
+	cout << "This program takes an input point cloud and a location to " << endl
+			<< "microscope properties, and then segments the point " << endl
+			<< " cloud using Euclidean cluster extraction.  Outputs " << endl
+			<< " are saved in the output director."
+			<< endl << endl
+			<< "Usage: " << endl
+			<< "<inputCloud> <Properties XML> <output_dir>"
+			<< endl;
+}
 
 /**
  *
  */
 int main(const int argc, const char **argv) {
-	if (argc != 3) {
-		cout << "Expected 2 inputs, received " << argc << endl;
+	if (argc != 4) {
+		cout << "Expected 3 inputs, received " << (argc - 1) << endl << endl;
+		printUsage();
 		return 0;
 	}
-	double pixelSize = 1.2109375;
+
 	string inFile = argv[1];
-	string outPath = argv[2];
+	string outPath = argv[3];
+
+	MicroscopeProperties scopeProps;
+	scopeProps.readFromXML(argv[2]);
 
 	cout << "Processing " << inFile << endl;
 	cout << "Outputting to " << outPath << endl;
+	cout << scopeProps << endl;
 
 	CloudPtr cloud (new Cloud);
 	io::loadPLYFile (inFile.c_str(), *cloud);
@@ -71,8 +88,8 @@ int main(const int argc, const char **argv) {
 	cout << "Max Vals: " << maxVals << endl;
 	//int numCols = (int)(maxVals.x / pixelSize);
 	//int numRows = (int)(maxVals.y / pixelSize);
-	int numCols = 512;
-	int numRows = 512;
+	int numCols = scopeProps.imageWidth;
+	int numRows = scopeProps.imageHeight;
 
 	cout << "Computing kdTree..." << endl;
 	StopWatch time;
@@ -105,8 +122,8 @@ int main(const int argc, const char **argv) {
 		for (auto pit = it->indices.begin(); pit != it->indices.end(); ++pit) {
 			PointT & pt = cloud->points[*pit];
 			cloud_cluster->points.push_back(pt);
-			int col = (int)(pt.x / pixelSize);
-			int row = (int)(pt.y / pixelSize);
+			int col = (int)(pt.x / scopeProps.pixelWidth);
+			int row = (int)(pt.y / scopeProps.pixelHeight);
 			segImage.at<uchar>(row,col) = (uchar)((currCluster + 1) * maskScale);
 		}
 		cloud_cluster->width = cloud_cluster->points.size();
