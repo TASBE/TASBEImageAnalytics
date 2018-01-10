@@ -10,6 +10,7 @@
 
 #include <string>
 #include <ostream>
+#include <iomanip>
 
 struct MicroscopeProperties {
 	double pixelWidth;
@@ -24,11 +25,16 @@ struct MicroscopeProperties {
 
 	friend std::ostream& operator << (std::ostream& os, const MicroscopeProperties& p) {
 		os << "Microscope properties for " << p.fileName << std::endl;
-		os << "\timageWidth: " << p.imageWidth << std::endl;
-		os << "\timageHeight: " << p.imageHeight << std::endl;
-		os << "\tpixelWidth: " << p.pixelWidth << std::endl;
-		os << "\tpixelHeight: " << p.pixelHeight << std::endl;
-		os << "\tpixelDepth: " << p.pixelDepth << std::endl;
+		os << "\t" << std::left << std::setw(15) << "imageWidth: "
+				<< std::left << std::setw(15) << p.imageWidth << std::endl;
+		os << "\t" << std::left << std::setw(15) << "imageHeight: "
+				<< std::left << std::setw(15) << p.imageHeight << std::endl;
+		os << "\t" << std::left << std::setw(15) << "pixelWidth: "
+				<< std::left << std::setw(15) << p.pixelWidth << std::endl;
+		os << "\t" << std::left << std::setw(15) << "pixelHeight: "
+				<< std::left << std::setw(15) << p.pixelHeight << std::endl;
+		os << "\t" << std::left << std::setw(15) << "pixelDepth: "
+				<< std::left << std::setw(15) << p.pixelDepth << std::endl;
 		return os;
 	}
 };
