@@ -46,10 +46,6 @@ typedef typename Cloud::Ptr CloudPtr;
 
 typedef pcl::PointCloud<PointNormal> PointCloudWithNormals;
 
-Cloud::ConstPtr cloud_(new Cloud);
-Cloud::Ptr prevCloud;
-Cloud::Ptr totalCloud;
-
 void printUsage() {
 	cout << "This program takes an input point cloud and a location to " << endl
 			<< "microscope properties, and then segments the point " << endl
@@ -60,6 +56,27 @@ void printUsage() {
 			<< "<inputCloud> <Properties XML> <output_dir>"
 			<< endl;
 }
+
+/**
+ *
+ */
+std::vector<PointIndices> segment(CloudPtr cloud) {
+	// Creating the KdTree object for the search method of the extraction
+	search::KdTree<PointT>::Ptr tree(new search::KdTree<PointT>);
+	tree->setInputCloud(cloud);
+
+	std::vector<PointIndices> cluster_indices;
+	EuclideanClusterExtraction<PointT> ec;
+	ec.setClusterTolerance(10);
+	ec.setMinClusterSize(5);
+	//ec.setMaxClusterSize(25000);
+	ec.setSearchMethod(tree);
+	ec.setInputCloud(cloud);
+	ec.extract(cluster_indices);
+
+	return cluster_indices;
+}
+
 
 /**
  *
@@ -87,7 +104,7 @@ int main(const int argc, const char **argv) {
 	cout << "Outputting to " << outPath << endl;
 	cout << scopeProps << endl;
 
-	CloudPtr cloud (new Cloud);
+	CloudPtr cloud(new Cloud);
 	io::loadPLYFile (inFile.c_str(), *cloud);
 
 	cout << "Num input points: " << cloud->size() << endl;
@@ -96,30 +113,14 @@ int main(const int argc, const char **argv) {
 	getMinMax3D(*cloud, minVals, maxVals);
 	cout << "Min Vals: " << minVals << endl;
 	cout << "Max Vals: " << maxVals << endl;
-	//int numCols = (int)(maxVals.x / pixelSize);
-	//int numRows = (int)(maxVals.y / pixelSize);
 	int numCols = scopeProps.imageWidth;
 	int numRows = scopeProps.imageHeight;
 
-	cout << "Computing kdTree..." << endl;
-	StopWatch time;
-	// Creating the KdTree object for the search method of the extraction
-	search::KdTree<PointT>::Ptr tree(new search::KdTree<PointT>);
-	tree->setInputCloud(cloud);
-	double runTime = time.getTime();
-	cout << "\t Computed kdTree in " << runTime << "ms!" << endl;
-
 	cout << "Segmenting..." << endl;
-	time.reset();
-	std::vector<PointIndices> cluster_indices;
-	EuclideanClusterExtraction<PointT> ec;
-	ec.setClusterTolerance(10);
-	ec.setMinClusterSize(5);
-	//ec.setMaxClusterSize(25000);
-	ec.setSearchMethod(tree);
-	ec.setInputCloud(cloud);
-	ec.extract(cluster_indices);
-	runTime = time.getTime();
+	StopWatch time;
+	std::vector<PointIndices> cluster_indices = segment(cloud);
+	double runTime = time.getTime();
+
 	int numClusters = cluster_indices.size();
 	int currCluster = 0;
 	int maskScale = 255 / numClusters;
@@ -134,7 +135,8 @@ int main(const int argc, const char **argv) {
 			cloud_cluster->points.push_back(pt);
 			int col = (int)(pt.x / scopeProps.pixelWidth);
 			int row = (int)(pt.y / scopeProps.pixelHeight);
-			segImage.at<uchar>(row,col) = (uchar)((currCluster + 1) * maskScale);
+			segImage.at<uchar>(row, col) = (uchar) ((currCluster + 1)
+					* maskScale);
 		}
 		cloud_cluster->width = cloud_cluster->points.size();
 		cloud_cluster->height = 1;
@@ -144,7 +146,8 @@ int main(const int argc, const char **argv) {
 		ss << outPath << "/" << "cloud_cluster_" << currCluster << ".ply";
 		io::savePLYFile(ss.str(), *cloud_cluster, false);
 
-		cout << "\t\tCluster " << currCluster << ", num pts: " << cloud_cluster->points.size() << endl;
+		cout << "\t\tCluster " << currCluster << ", num pts: "
+				<< cloud_cluster->points.size() << endl;
 		currCluster++;
 	}
 	Mat colorClusterMap;
