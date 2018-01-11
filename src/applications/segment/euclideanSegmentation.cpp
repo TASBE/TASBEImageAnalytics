@@ -32,6 +32,7 @@
 
 #include <boost/filesystem.hpp>
 
+#include "../../../include/core/SegParams.h"
 #include "core/MicroscopeProperties.h"
 
 using namespace std;
@@ -60,16 +61,31 @@ void printUsage() {
 /**
  *
  */
-std::vector<PointIndices> segment(CloudPtr cloud) {
+std::vector<PointIndices> segment(CloudPtr cloud,
+		SegParams & segParams) {
+
 	// Creating the KdTree object for the search method of the extraction
 	search::KdTree<PointT>::Ptr tree(new search::KdTree<PointT>);
 	tree->setInputCloud(cloud);
 
 	std::vector<PointIndices> cluster_indices;
+
 	EuclideanClusterExtraction<PointT> ec;
-	ec.setClusterTolerance(10);
-	ec.setMinClusterSize(5);
-	//ec.setMaxClusterSize(25000);
+	if (segParams.hasParam(SegParams::EUC_CLUSTER_TOLERANCE)) {
+		ec.setClusterTolerance(
+				segParams.getDouble(SegParams::EUC_CLUSTER_TOLERANCE));
+	} else {
+		ec.setClusterTolerance(10);
+	}
+	if (segParams.hasParam(SegParams::MIN_CLUSTER_SIZE)) {
+		ec.setMinClusterSize(segParams.getDouble(SegParams::MIN_CLUSTER_SIZE));
+	} else {
+		ec.setMinClusterSize(5);
+	}
+	if (segParams.hasParam(SegParams::MAX_CLUSTER_SIZE)) {
+		ec.setMaxClusterSize(segParams.getDouble(SegParams::MAX_CLUSTER_SIZE));
+	}
+
 	ec.setSearchMethod(tree);
 	ec.setInputCloud(cloud);
 	ec.extract(cluster_indices);
@@ -82,14 +98,14 @@ std::vector<PointIndices> segment(CloudPtr cloud) {
  *
  */
 int main(const int argc, const char **argv) {
-	if (argc != 4) {
-		cout << "Expected 3 inputs, received " << (argc - 1) << endl << endl;
+	if (argc != 5) {
+		cout << "Expected 4 inputs, received " << (argc - 1) << endl << endl;
 		printUsage();
 		return 0;
 	}
 
 	string inFile = argv[1];
-	string outPath = argv[3];
+	string outPath = argv[4];
 
 	// Ensure output dir exists
 	fs::path boostOutPath(outPath);
@@ -98,11 +114,21 @@ int main(const int argc, const char **argv) {
 	}
 
 	MicroscopeProperties scopeProps;
-	scopeProps.readFromXML(argv[2]);
+	if (!scopeProps.readFromXML(argv[2])) {
+		cout << "Failed loading microscope properties!" << endl;
+		return 0;
+	}
+
+	SegParams segParams;
+	if (!segParams.loadParameters(argv[3])) {
+		cout << "Failed loading segmentation parameters!" << endl;
+		return 0;
+	}
 
 	cout << "Processing " << inFile << endl;
 	cout << "Outputting to " << outPath << endl;
 	cout << scopeProps << endl;
+	cout << segParams << endl;
 
 	CloudPtr cloud(new Cloud);
 	io::loadPLYFile (inFile.c_str(), *cloud);
@@ -118,7 +144,7 @@ int main(const int argc, const char **argv) {
 
 	cout << "Segmenting..." << endl;
 	StopWatch time;
-	std::vector<PointIndices> cluster_indices = segment(cloud);
+	std::vector<PointIndices> cluster_indices = segment(cloud, segParams);
 	double runTime = time.getTime();
 
 	int numClusters = cluster_indices.size();
