@@ -36,6 +36,8 @@ def sort_nicely(l):
 cfgSection = "ImageJConfig"
 
 # PARAMS
+elmSegPath = "elmSegPath"
+scopeProperties = "scopeProperties"
 numChannels = "numChannels"
 numZ = "numZ"
 noZInFile = "noZInFile"
@@ -149,6 +151,8 @@ class ConfigParams:
             option = optionRaw.lower()
             if option == inputDir.lower():
                 self.params[inputDir] = cfgParser.get(cfgSection, option)
+            elif option == elmSegPath.lower():
+                self.params[elmSegPath] = cfgParser.get(cfgSection, option)
             elif option == outputDir.lower():
                 self.params[outputDir] = cfgParser.get(cfgSection, option)
             elif option == numChannels.lower():
@@ -200,6 +204,7 @@ class ConfigParams:
     #
     ####    
     def updateCfgWithXML(self, xmlFile):
+        self.params[scopeProperties] = xmlFile
         xmlRoot = ElementTree.parse(xmlFile).getroot()
         imgEle = xmlRoot.find("Image")
         imgDescEle = imgEle.find("ImageDescription")
