@@ -180,41 +180,40 @@ int main(const int argc, const char **argv) {
 
 	cout << "Segmenting..." << endl;
 	StopWatch time;
-	std::vector<PointIndices> cluster_indices = segment(cloud, segParams);
+	std::vector<PointIndices> clusterIndices = segment(cloud, segParams);
 	double runTime = time.getTime();
 
-	int numClusters = cluster_indices.size();
-	int currCluster = 0;
+	int numClusters = clusterIndices.size();
+	int currCluster = 1;
 	int maskScale = 255 / numClusters;
 	cout << "\tSegmented cloud in " << runTime << "ms!" << endl;
 	cout << "\tNum clusters: " << numClusters << endl;
 	cout << "\tCluster Sizes: " << numClusters << endl;
 	Mat segImage(numRows, numCols, CV_8UC1, Scalar(0));
-	for (auto it = cluster_indices.begin(); it != cluster_indices.end(); ++it) {
-		CloudPtr cloud_cluster(new Cloud);
+	PointCloud<PointXYZRGBL> clusterCloud;
+	for (auto it = clusterIndices.begin(); it != clusterIndices.end(); ++it) {
 		for (auto pit = it->indices.begin(); pit != it->indices.end(); ++pit) {
 			PointT & pt = cloud->points[*pit];
-			cloud_cluster->points.push_back(pt);
+			PointXYZRGBL ptl(pt.r, pt.g, pt.b, currCluster);
+			ptl.x = pt.x; ptl.y = pt.y; ptl.z = pt.z;
+			clusterCloud.push_back(ptl);
 			int col = (int)(pt.x / scopeProps.pixelWidth);
 			int row = (int)(pt.y / scopeProps.pixelHeight);
-			segImage.at<uchar>(row, col) = (uchar) ((currCluster + 1)
-					* maskScale);
+			segImage.at<uchar>(row, col) = (uchar)(currCluster * maskScale);
 		}
-		cloud_cluster->width = cloud_cluster->points.size();
-		cloud_cluster->height = 1;
-		cloud_cluster->is_dense = true;
-
-		std::stringstream ss;
-		ss << outPath << "/" << runName << "_cloud_cluster_" << currCluster << ".ply";
-		io::savePLYFile(ss.str(), *cloud_cluster, false);
-
 		cout << "\t\tCluster " << currCluster << ", num pts: "
-				<< cloud_cluster->points.size() << endl;
+				<< it->indices.size() << endl;
 		currCluster++;
 	}
+	// Save cloud of labeled points
+	std::stringstream ss;
+	ss << outPath << "/" << runName << "_clusters" << ".ply";
+	io::savePLYFile(ss.str(), clusterCloud, false);
+
+	// Save 2D projection of segments
 	Mat colorClusterMap;
 	applyColorMap(segImage, colorClusterMap, COLORMAP_JET);
-	std::stringstream ss;
+	ss.str(""); ss.clear();
 	ss << outPath << "/" << runName << "_segMask.png";
 	imwrite(ss.str(), colorClusterMap);
 }
