@@ -333,7 +333,7 @@ def compute3DStats(cfg, wellPath, chanName, cloudName):
     segIniPath = os.path.join(wellPath, "segParams.ini")
     segIniFile = open(segIniPath, "w")
     segIniFile.write("[InputParameters]\n")
-    segIniFile.write("RunName=" + chanName + "\n")
+    segIniFile.write("RunName=" + chanName + "Euc" + "\n")
     segIniFile.write("InputCloud=" + os.path.join(wellPath, cloudName) + "\n")
     segIniFile.write("OutputDir=" + os.path.join(wellPath, chanName + "Seg") + "\n")
     segIniFile.write("MicroscopeProperties=" + cfg.getValue(ELMConfig.scopeProperties) + "\n")
