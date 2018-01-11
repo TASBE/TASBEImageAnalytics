@@ -32,6 +32,9 @@ def sort_nicely(l):
     """
     l.sort(key=alphanum_key)
 
+# SECTION
+cfgSection = "ImageJConfig"
+
 # PARAMS
 numChannels = "numChannels"
 numZ = "numZ"
@@ -134,57 +137,57 @@ class ConfigParams:
         cfgParser = ConfigParser.RawConfigParser(allow_no_value=True)
         cfgParser.readfp(open(cfgPath))
 
-        if not cfgParser.has_section("Config"):
-            print "Config file doesn't contain [Config] section! Path: " + cfgPath;
+        if not cfgParser.has_section(cfgSection):
+            print "Config file doesn't contain [" + cfgSection + "] section! Path: " + cfgPath;
             return False
 
-        if cfgParser.has_option("Config", "numchannels") :
-            numChan = int(cfgParser.get("Config", "numchannels"))
+        if cfgParser.has_option(cfgSection, "numchannels") :
+            numChan = int(cfgParser.get(cfgSection, "numchannels"))
         else:
             numChan = self.params[numChannels]
-        for optionRaw in cfgParser.options("Config"):
+        for optionRaw in cfgParser.options(cfgSection):
             option = optionRaw.lower()
             if option == inputDir.lower():
-                self.params[inputDir] = cfgParser.get("Config", option)
+                self.params[inputDir] = cfgParser.get(cfgSection, option)
             elif option == outputDir.lower():
-                self.params[outputDir] = cfgParser.get("Config", option)
+                self.params[outputDir] = cfgParser.get(cfgSection, option)
             elif option == numChannels.lower():
-                self.params[numChannels] = int(cfgParser.get("Config", option))
+                self.params[numChannels] = int(cfgParser.get(cfgSection, option))
             elif option == numZ.lower():
-                self.params[numZ] = int(cfgParser.get("Config", option))
+                self.params[numZ] = int(cfgParser.get(cfgSection, option))
             elif option == pcloudColorThresh.lower():
-                self.params[pcloudColorThresh] = int(cfgParser.get("Config", option))
+                self.params[pcloudColorThresh] = int(cfgParser.get(cfgSection, option))
             elif option == pcloudExclusionX.lower():
-                self.params[pcloudExclusionX] = int(cfgParser.get("Config", option))
+                self.params[pcloudExclusionX] = int(cfgParser.get(cfgSection, option))
             elif option == pcloudExclusionY.lower():
-                self.params[pcloudExclusionY] = int(cfgParser.get("Config", option))
+                self.params[pcloudExclusionY] = int(cfgParser.get(cfgSection, option))
             elif option == noZInFile.lower():
-                self.params[noZInFile]  = cfgParser.get("Config", option) == "True"
+                self.params[noZInFile]  = cfgParser.get(cfgSection, option) == "True"
             elif option == chansToSkip.lower():
-                toks = cfgParser.get("Config", option).split(",")
+                toks = cfgParser.get(cfgSection, option).split(",")
                 self.params[chansToSkip] = []
                 for tok in toks:
                     self.params[chansToSkip].append(tok.strip())
             elif option == chanLabel.lower():
-                toks = cfgParser.get("Config", option).split(",")
+                toks = cfgParser.get(cfgSection, option).split(",")
                 if not len(toks) == numChan:
                     print "Improper value for chanLabel config, expected " + numChan + " comma separated values!  Received " + str(len(toks))
                 self.params[chanLabel] = []
                 for tok in toks:
                     self.params[chanLabel].append(tok.strip())
             elif option == analysisRoi.lower():
-                toks = cfgParser.get("Config", option).split(",")
+                toks = cfgParser.get(cfgSection, option).split(",")
                 if not len(toks) == 4:
                     print "Improper value for analysisRoi config, expected " + 4+ " comma separated values!  Received " + str(len(toks))
                 self.params[analysisRoi] = [toks[0],toks[1],toks[2],toks[3]]
             elif option == dsNameIdx.lower():
-                self.params[dsNameIdx] = int(cfgParser.get("Config", option))
+                self.params[dsNameIdx] = int(cfgParser.get(cfgSection, option))
             elif option == wellNames.lower():
-                toks = cfgParser.get("Config", option).split(",")
+                toks = cfgParser.get(cfgSection, option).split(",")
                 for t in toks:
                     self.params[wellNames].append(t)
             elif option == debugOutput.lower():
-                self.params[debugOutput] = cfgParser.get("Config", option) == "True"
+                self.params[debugOutput] = cfgParser.get(cfgSection, option) == "True"
             else:
                 print "Warning, unrecognized config option: " + option   
         
