@@ -16,6 +16,7 @@
 const std::string SegParams::SEG_SECTION = "SegmentationParameters";
 const std::string SegParams::INPUT_SECTION = "InputParameters";
 
+const std::string SegParams::RUN_NAME = "RunName";
 const std::string SegParams::INPUT_CLOUD = "InputCloud";
 const std::string SegParams::INPUT_BRIGHTFIELD = "InputBrightField";
 const std::string SegParams::INPUT_YFP = "InputYFP";

@@ -17,6 +17,7 @@ struct SegParams {
 	static const std::string SEG_SECTION;
 	static const std::string INPUT_SECTION;
 
+	static const std::string RUN_NAME;
 	static const std::string INPUT_CLOUD;
 	static const std::string INPUT_BRIGHTFIELD;
 	static const std::string INPUT_YFP;

@@ -146,6 +146,10 @@ int main(const int argc, const char **argv) {
 
 	string inFile = segParams.getValue(SegParams::INPUT_CLOUD);
 	string outPath = segParams.getValue(SegParams::OUTPUT_DIR);
+	string runName;
+	if (segParams.hasParam(SegParams::RUN_NAME)) {
+		runName = segParams.getValue(SegParams::RUN_NAME);
+	}
 
 	// Ensure output dir exists
 	fs::path boostOutPath(outPath);
@@ -201,7 +205,7 @@ int main(const int argc, const char **argv) {
 		cloud_cluster->is_dense = true;
 
 		std::stringstream ss;
-		ss << outPath << "/" << "cloud_cluster_" << currCluster << ".ply";
+		ss << outPath << "/" << runName << "_cloud_cluster_" << currCluster << ".ply";
 		io::savePLYFile(ss.str(), *cloud_cluster, false);
 
 		cout << "\t\tCluster " << currCluster << ", num pts: "
@@ -211,7 +215,7 @@ int main(const int argc, const char **argv) {
 	Mat colorClusterMap;
 	applyColorMap(segImage, colorClusterMap, COLORMAP_JET);
 	std::stringstream ss;
-	ss << outPath << "/" << "segMask.png";
+	ss << outPath << "/" << runName << "_segMask.png";
 	imwrite(ss.str(), colorClusterMap);
 }
 
