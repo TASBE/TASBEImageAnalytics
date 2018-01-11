@@ -19,7 +19,7 @@ def printUsage():
     global numChannels;
     global numZ;
     
-    print "This script will read tif files from an input directory and compute statistics on the cell images."
+    print "This script will read tif files from an input directory and generate a 3D point cloud for each channel."
     print "The script must be pointed to a configuration ini file that will define several important aspects."
     print "The input and output dirs must be defined in the config file, however all of the rest of the config"
     print " can be read in from the microscope properties if they exist in the Metadata dir in the input."
