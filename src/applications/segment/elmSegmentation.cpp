@@ -48,13 +48,14 @@ typedef typename Cloud::Ptr CloudPtr;
 typedef pcl::PointCloud<PointNormal> PointCloudWithNormals;
 
 void printUsage() {
-	cout << "This program takes an input point cloud and a location to " << endl
-			<< "microscope properties, and then segments the point " << endl
-			<< " cloud using Euclidean cluster extraction.  Outputs " << endl
-			<< " are saved in the output director."
+	cout << "This program performs segmentation on a 3D point " << endl
+			<< "cloud. It takes one parameter, a path to a " << endl
+			<< "configuration ini file."
 			<< endl << endl
 			<< "Usage: " << endl
-			<< "<inputCloud> <Properties XML> <output_dir>"
+			<< "<pathToIni>"
+			<< endl << endl
+			<< SegParams::getDescription()
 			<< endl;
 }
 
@@ -114,14 +115,37 @@ std::vector<PointIndices> segment(CloudPtr cloud,
  *
  */
 int main(const int argc, const char **argv) {
-	if (argc != 5) {
-		cout << "Expected 4 inputs, received " << (argc - 1) << endl << endl;
+	if (argc != 2) {
+		cout << "Expected 1 inputs, received " << (argc - 1) << endl << endl;
 		printUsage();
 		return 0;
 	}
 
-	string inFile = argv[1];
-	string outPath = argv[4];
+	SegParams segParams;
+	if (!segParams.loadParameters(argv[1])) {
+		cout << "Failed loading segmentation parameters!" << endl;
+		return 0;
+	}
+	cout << segParams << endl;
+
+	if (!segParams.hasParam(SegParams::INPUT_CLOUD)) {
+		cout << "Input cloud not specified!" << endl;
+		printUsage();
+		return 0;
+	}
+	if (!segParams.hasParam(SegParams::OUTPUT_DIR)) {
+		cout << "Output dir not specified!" << endl;
+		printUsage();
+		return 0;
+	}
+	if (!segParams.hasParam(SegParams::SCOPE_PROPERTIES)) {
+		cout << "Microscope properties not specified!" << endl;
+		printUsage();
+		return 0;
+	}
+
+	string inFile = segParams.getValue(SegParams::INPUT_CLOUD);
+	string outPath = segParams.getValue(SegParams::OUTPUT_DIR);
 
 	// Ensure output dir exists
 	fs::path boostOutPath(outPath);
@@ -130,21 +154,13 @@ int main(const int argc, const char **argv) {
 	}
 
 	MicroscopeProperties scopeProps;
-	if (!scopeProps.readFromXML(argv[2])) {
+	if (!scopeProps.readFromXML(
+			segParams.getValue(SegParams::SCOPE_PROPERTIES))) {
 		cout << "Failed loading microscope properties!" << endl;
 		return 0;
 	}
 
-	SegParams segParams;
-	if (!segParams.loadParameters(argv[3])) {
-		cout << "Failed loading segmentation parameters!" << endl;
-		return 0;
-	}
-
-	cout << "Processing " << inFile << endl;
-	cout << "Outputting to " << outPath << endl;
 	cout << scopeProps << endl;
-	cout << segParams << endl;
 
 	CloudPtr cloud(new Cloud);
 	io::loadPLYFile (inFile.c_str(), *cloud);
