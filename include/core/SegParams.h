@@ -16,9 +16,13 @@
 struct SegParams {
 	static const std::string SEG_SECTION;
 
+	static const std::string SEG_TYPE;
 	static const std::string EUC_CLUSTER_TOLERANCE;
 	static const std::string MIN_CLUSTER_SIZE;
 	static const std::string MAX_CLUSTER_SIZE;
+
+	static const std::string ST_EUCLIDEAN;
+	static const std::string ST_VOXEL;
 
 	std::map<std::string,std::string> params;
 

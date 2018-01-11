@@ -13,9 +13,13 @@
 
 const std::string SegParams::SEG_SECTION = "SegmentationParameters";
 
+const std::string SegParams::SEG_TYPE = "SegType";
 const std::string SegParams::EUC_CLUSTER_TOLERANCE = "EucClusterTolerance";
 const std::string SegParams::MIN_CLUSTER_SIZE = "MinClusterSize";
 const std::string SegParams::MAX_CLUSTER_SIZE = "MaxClusterSize";
+
+const std::string SegParams::ST_EUCLIDEAN = "Euclidean";
+const std::string SegParams::ST_VOXEL = "Voxel";
 
 
 bool SegParams::loadParameters(std::string pathToIni) {

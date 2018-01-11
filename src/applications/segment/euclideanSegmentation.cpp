@@ -70,25 +70,41 @@ std::vector<PointIndices> segment(CloudPtr cloud,
 
 	std::vector<PointIndices> cluster_indices;
 
-	EuclideanClusterExtraction<PointT> ec;
-	if (segParams.hasParam(SegParams::EUC_CLUSTER_TOLERANCE)) {
-		ec.setClusterTolerance(
-				segParams.getDouble(SegParams::EUC_CLUSTER_TOLERANCE));
-	} else {
-		ec.setClusterTolerance(10);
-	}
-	if (segParams.hasParam(SegParams::MIN_CLUSTER_SIZE)) {
-		ec.setMinClusterSize(segParams.getDouble(SegParams::MIN_CLUSTER_SIZE));
-	} else {
-		ec.setMinClusterSize(5);
-	}
-	if (segParams.hasParam(SegParams::MAX_CLUSTER_SIZE)) {
-		ec.setMaxClusterSize(segParams.getDouble(SegParams::MAX_CLUSTER_SIZE));
-	}
+	if (!segParams.hasParam(SegParams::SEG_TYPE)
+			|| segParams.getValue(SegParams::SEG_TYPE)
+					== SegParams::ST_EUCLIDEAN) {
 
-	ec.setSearchMethod(tree);
-	ec.setInputCloud(cloud);
-	ec.extract(cluster_indices);
+		EuclideanClusterExtraction<PointT> ec;
+		if (segParams.hasParam(SegParams::EUC_CLUSTER_TOLERANCE)) {
+			ec.setClusterTolerance(
+					segParams.getDouble(SegParams::EUC_CLUSTER_TOLERANCE));
+		} else {
+			ec.setClusterTolerance(10);
+		}
+		if (segParams.hasParam(SegParams::MIN_CLUSTER_SIZE)) {
+			ec.setMinClusterSize(
+					segParams.getDouble(SegParams::MIN_CLUSTER_SIZE));
+		} else {
+			ec.setMinClusterSize(5);
+		}
+		if (segParams.hasParam(SegParams::MAX_CLUSTER_SIZE)) {
+			ec.setMaxClusterSize(
+					segParams.getDouble(SegParams::MAX_CLUSTER_SIZE));
+		}
+
+		ec.setSearchMethod(tree);
+		ec.setInputCloud(cloud);
+		ec.extract(cluster_indices);
+	} else if (segParams.getValue(SegParams::SEG_TYPE)
+					== SegParams::ST_VOXEL) {
+
+	} else {
+		cout << "Unknown segmentation type: "
+				<< segParams.getValue(SegParams::SEG_TYPE) << endl;
+		cout << "Accepted segmentation types: " << endl;
+		cout << SegParams::ST_EUCLIDEAN << endl;
+		cout << SegParams::ST_VOXEL << endl;
+	}
 
 	return cluster_indices;
 }
