@@ -191,22 +191,42 @@ int main(const int argc, const char **argv) {
 	cout << "\tCluster Sizes: " << numClusters << endl;
 	Mat segImage(numRows, numCols, CV_8UC1, Scalar(0));
 	PointCloud<PointXYZRGBL> clusterCloud;
+	std::stringstream ss;
+	ss << outPath << "/" << runName << "_clusterStats" << ".csv";
+	std::ofstream clusterStats;
+	clusterStats.open(ss.str().c_str());
+	clusterStats << "clusterId, numPoints, volume, "
+			"integrated red, integrated green, integrated blue, "
+			"avg red, avg green, avg blue, " << endl;
+	double ptVolume = scopeProps.pixelWidth * scopeProps.pixelHeight
+			* scopeProps.pixelDepth;
 	for (auto it = clusterIndices.begin(); it != clusterIndices.end(); ++it) {
+		int totalRed, totalGreen, totalBlue;
+		totalRed = totalGreen = totalBlue = 0;
 		for (auto pit = it->indices.begin(); pit != it->indices.end(); ++pit) {
 			PointT & pt = cloud->points[*pit];
 			PointXYZRGBL ptl(pt.r, pt.g, pt.b, currCluster);
 			ptl.x = pt.x; ptl.y = pt.y; ptl.z = pt.z;
+			totalRed += pt.r; totalGreen += pt.g; totalBlue += pt.b;
 			clusterCloud.push_back(ptl);
 			int col = (int)(pt.x / scopeProps.pixelWidth);
 			int row = (int)(pt.y / scopeProps.pixelHeight);
 			segImage.at<uchar>(row, col) = (uchar)(currCluster * maskScale);
 		}
+		int numPoints = it->indices.size();
+		clusterStats << currCluster << ", " << numPoints << ", "
+				<< numPoints * ptVolume << ", " << totalRed << ", "
+				<< totalGreen << ", " << totalBlue << ", "
+				<< totalRed / numPoints << ", " << totalGreen / numPoints
+				<< ", " << totalBlue / numPoints << endl;
 		cout << "\t\tCluster " << currCluster << ", num pts: "
-				<< it->indices.size() << endl;
+				<< numPoints << endl;
 		currCluster++;
 	}
+	clusterStats.close();
+
 	// Save cloud of labeled points
-	std::stringstream ss;
+	ss.str(""); ss.clear();
 	ss << outPath << "/" << runName << "_clusters" << ".ply";
 	io::savePLYFile(ss.str(), clusterCloud, false);
 
