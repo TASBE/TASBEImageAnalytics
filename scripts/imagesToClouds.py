@@ -190,6 +190,9 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
         chanPixBand = -1;
 
     chanPixBand
+    numExclusionPts = 0
+    numColorThreshPts = 0
+    ptCount = 0
     print "\tProcessing channel: " + chanName
     for z in range(0, cfg.getValue(ELMConfig.numZ)):
         zStr = cfg.getZStr(z);
@@ -198,21 +201,24 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
         if cfg.getValue(ELMConfig.debugOutput):
             WindowManager.setTempCurrentImage(currIP);
             IJ.saveAs('png', os.path.join(wellPath, "Orig_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
+
         # We need to get to a grayscale image, which will be done differently for different channels
         currIP = ELMImageUtils.getGrayScaleImage(currIP, c, z, zStr, chanStr, chanName, cfg, wellPath, wellName)
         if (not currIP) :
             continue
 
-
         currProcessor = currIP.getProcessor()
+        #WindowManager.setTempCurrentImage(currIP);
+        #currIP.show()
         for x in range(0, currIP.getWidth()) :
             for y in range(0,currIP.getHeight()) :
                 if not currProcessor.get(x,y) == 0x00000000:
+                    ptCount += 1
                     ptX = x * cfg.getValue(ELMConfig.pixelWidth)
                     ptY = y * cfg.getValue(ELMConfig.pixelHeight)
                     ptZ = z * cfg.getValue(ELMConfig.pixelDepth);
                     colorPix = origImage.getPixel(x,y)
-                    red   = colorPix[0] 
+                    red   = colorPix[0]
                     green = colorPix[1]
                     blue  = colorPix[2]
                     # Check that point meets color threshold
@@ -222,13 +228,19 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
                     pcloudExclusion = not (cfg.hasValue(ELMConfig.pcloudExclusionX) and cfg.hasValue(ELMConfig.pcloudExclusionY)) \
                         or (ptX < cfg.getValue(ELMConfig.pcloudExclusionX) or ptY < cfg.getValue(ELMConfig.pcloudExclusionY))
 
-                    if (pcloudColorThresh and pcloudExclusion):
+                    if (pcloudColorThresh and not pcloudExclusion):
                         points.append([ptX, ptY, ptZ, red, green, blue])
+                    elif (not pcloudColorThresh):
+                        numColorThreshPts += 1
+                    elif (pcloudExclusion):
+                        numExclusionPts += 1
 
         currIP.close()
         origImage.close()
-        
 
+    print "\t\tTotal points considered: " + str(ptCount)
+    print "\t\tColor Threshold Skipped " + str(numColorThreshPts) + " points."
+    print "\t\tExclusion Zone  Skipped " + str(numExclusionPts) + " points."
     print ""
 
     resultsFile = open(os.path.join(wellPath, chanName + "_cloud.ply"), "w")

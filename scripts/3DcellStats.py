@@ -189,6 +189,9 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
         chanPixBand = -1;
 
     chanPixBand
+    numExclusionPts = 0
+    numColorThreshPts = 0
+    ptCount = 0
     print "\tProcessing channel: " + chanName
     for z in range(0, cfg.getValue(ELMConfig.numZ)):
         zStr = cfg.getZStr(z);
@@ -203,14 +206,13 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
         if (not currIP) :
             continue
 
-        numExclusionPts = 0;
-        numColorThreshPts = 0
         currProcessor = currIP.getProcessor()
         #WindowManager.setTempCurrentImage(currIP);
         #currIP.show()
         for x in range(0, currIP.getWidth()) :
             for y in range(0,currIP.getHeight()) :
                 if not currProcessor.get(x,y) == 0x00000000:
+                    ptCount += 1
                     ptX = x * cfg.getValue(ELMConfig.pixelWidth)
                     ptY = y * cfg.getValue(ELMConfig.pixelHeight)
                     ptZ = z * cfg.getValue(ELMConfig.pixelDepth);
@@ -225,16 +227,17 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
                     pcloudExclusion = not (cfg.hasValue(ELMConfig.pcloudExclusionX) and cfg.hasValue(ELMConfig.pcloudExclusionY)) \
                         or (ptX < cfg.getValue(ELMConfig.pcloudExclusionX) or ptY < cfg.getValue(ELMConfig.pcloudExclusionY))
 
-                    if (pcloudColorThresh and pcloudExclusion):
+                    if (pcloudColorThresh and not pcloudExclusion):
                         points.append([ptX, ptY, ptZ, red, green, blue])
                     elif (not pcloudColorThresh):
                         numColorThreshPts += 1
-                    elif (not pcloudExclusion):
+                    elif (pcloudExclusion):
                         numExclusionPts += 1
 
         currIP.close()
         origImage.close()
 
+    print "\t\tTotal points considered: " + str(ptCount)
     print "\t\tColor Threshold Skipped " + str(numColorThreshPts) + " points."
     print "\t\tExclusion Zone  Skipped " + str(numExclusionPts) + " points."
     print ""
