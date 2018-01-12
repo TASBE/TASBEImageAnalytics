@@ -1,6 +1,4 @@
-from ij import IJ, ImagePlus, WindowManager
-from ij.process import ImageConverter, ImageProcessor, ByteProcessor
-from ij.plugin import ChannelSplitter, ImageCalculator
+from ij import IJ, WindowManager
 
 from subprocess import call
 import os, glob, re, time, sys
@@ -10,7 +8,7 @@ import os, glob, re, time, sys
 for path in os.environ['CLASSPATH'].split(os.pathsep):
     sys.path.append(path)
 
-import ELMConfig
+import ELMConfig, ELMImageUtils
     
 #
 #
@@ -108,7 +106,6 @@ def main(cfg):
         metadataExists = False;
 
     # Process each well
-    dsResults = []
     for wellName in uniqueNames:
         # Check to see if we should ignore this well
         if cfg.getValue(ELMConfig.wellNames):
@@ -203,82 +200,17 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
         if cfg.getValue(ELMConfig.debugOutput):
             WindowManager.setTempCurrentImage(currIP);
             IJ.saveAs('png', os.path.join(wellPath, "Orig_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
+            
         # We need to get to a grayscale image, which will be done differently for different channels
-        if (chanName == ELMConfig.BRIGHTFIELD):
-            toGray = ImageConverter(currIP)
-            toGray.convertToGray8()
-            darkBackground = False
-        elif (chanName == ELMConfig.BLUE) \
-                or (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.RED) \
-                or (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.GREEN): #
-            chanIdx = 2
-            if (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.RED):
-                chanIdx = 0
-            elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.GREEN):
-                chanIdx = 1;
-            imgChanns = ChannelSplitter.split(currIP);
-            currIP.close()
-            currIP = imgChanns[chanIdx];
-            darkBackground = True
-        elif (chanName == ELMConfig.YELLOW):
-            title = currIP.getTitle()
-            # Create a new image that consists of the average of the red & green channels
-            width = currIP.getWidth();
-            height = currIP.getHeight();
-            newPix = ByteProcessor(width, height)
-            for x in range(0, width) :
-                for y in range(0,height) :
-                    currPix = currIP.getPixel(x,y);
-                    newPix.putPixel(x, y, (currPix[0] + currPix[1]) / 2)
-            currIP.close()
-            currIP = ImagePlus(title, newPix)
-            darkBackground = True
-        elif (chanName == ELMConfig.SKIP):
+        currIP = ELMImageUtils.getGrayScaleImage(currIP, c, z, zStr, chanStr, chanName, cfg, wellPath, wellName)
+        if (not currIP) :
             continue
-        WindowManager.setTempCurrentImage(currIP);
-
-        if cfg.getValue(ELMConfig.debugOutput):
-            IJ.saveAs('png', os.path.join(wellPath, "Processing_" + wellName + "_" + zStr + "_" + chanStr + ".png"))\
-
-        upperThreshImg = currIP.duplicate()
-
-        currIP.getProcessor().setAutoThreshold("Default", darkBackground, ImageProcessor.NO_LUT_UPDATE)
-        threshRange = currIP.getProcessor().getMaxThreshold() - currIP.getProcessor().getMinThreshold()
-        if currIP.getType() != ImagePlus.GRAY8 :
-            print "\tChannel " + cfg.getValue(ELMConfig.chanLabel)[c] + " is not GRAY8, instead type is %d" % currIP.getType()
-        if threshRange > 230:
-            print "\t\tZ = " + str(z) + ": Ignored Objects due to threshold range!"
-            continue
-        IJ.run(currIP, "Convert to Mask", "")
-        IJ.run(currIP, "Close-", "")
-        
-        # Brightfield has an additional thresholding step
-        if cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.BRIGHTFIELD:
-            if cfg.getValue(ELMConfig.debugOutput):
-                IJ.saveAs('png', os.path.join(wellPath, "OrigMask" + wellName + "_" + zStr + "_" + chanStr + ".png"))
-
-            upperThresh = 255 * 0.95
-            upperThreshImg.getProcessor().setThreshold(upperThresh, 255, ImageProcessor.NO_LUT_UPDATE)
-            IJ.run(upperThreshImg, "Convert to Mask", "")
-            IJ.run(upperThreshImg, "Close-", "")
-            if cfg.getValue(ELMConfig.debugOutput):
-                WindowManager.setTempCurrentImage(upperThreshImg);
-                IJ.saveAs('png', os.path.join(wellPath, "UpperThreshMask" + wellName + "_" + zStr + "_" + chanStr + ".png"))
-
-            ic = ImageCalculator()
-            compositeMask = ic.run("OR create", currIP, upperThreshImg)
-            IJ.run(compositeMask, "Close-", "")
-            currIP.close()
-            currIP = compositeMask
-            WindowManager.setTempCurrentImage(currIP);
-
-        if cfg.getValue(ELMConfig.debugOutput):
-            WindowManager.setTempCurrentImage(currIP);
-            IJ.saveAs('png', os.path.join(wellPath, "Binary_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
 
         numExclusionPts = 0;
         numColorThreshPts = 0
         currProcessor = currIP.getProcessor()
+        #WindowManager.setTempCurrentImage(currIP);
+        #currIP.show()
         for x in range(0, currIP.getWidth()) :
             for y in range(0,currIP.getHeight()) :
                 if not currProcessor.get(x,y) == 0x00000000:
@@ -305,7 +237,6 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
 
         currIP.close()
         origImage.close()
-        upperThreshImg.close()
 
     print "\t\tColor Threshold Skipped " + str(numColorThreshPts) + " points."
     print "\t\tExclusion Zone  Skipped " + str(numExclusionPts) + " points."
