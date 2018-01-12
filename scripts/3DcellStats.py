@@ -272,7 +272,7 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
 ####    
 def compute3DStats(cfg, wellPath, chanName, cloudName):
     # Create SegParams INI file
-    segIniPath = os.path.join(wellPath, "segParams.ini")
+    segIniPath = os.path.join(wellPath, chanName + "_segParams.ini")
     segIniFile = open(segIniPath, "w")
     segIniFile.write("[InputParameters]\n")
     segIniFile.write("RunName=" + chanName + "Euc" + "\n")
