@@ -71,6 +71,7 @@ def main(cfg):
     zRE    = re.compile("z[0-9]+$")
     chRE   = re.compile("^ch[0-9]+$")
     wellRE   = re.compile("^[a-zA-Z][0-9]+$")
+    wellRepeat = re.compile("repeat") # Special case of a well name
     for filePath in imgFiles:
         fileName = os.path.basename(filePath)
         toks = os.path.splitext(fileName)[0].split("_")
@@ -84,7 +85,7 @@ def main(cfg):
                 zIdx = i
             if chRE.match(toks[i]):
                 chIdx = i
-            if wellRE.match(toks[i]) and i < wellIndex:
+            if (wellRE.match(toks[i]) or wellRepeat.match(toks[i])) and i < wellIndex:
                 wellIndex = i
         
         minInfoIdx = min(tIdx, min(zIdx, chIdx))
