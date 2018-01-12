@@ -23,9 +23,9 @@ ${FIJI_PATH}/ImageJ-linux64 --ij2 --headless --run scripts/cellStats.py cfgPath=
 checkFailure "cholka_dots_dox_gradient plate4"
 
 #polka_dots_repeat
-#${FIJI_PATH}/ImageJ-linux64 --ij2 --headless --run scripts/cellStats.py cfgPath=\"/media/nwalczak/XFS_Test/Resilio\ Sync/Resilio/2017_08_28\ polka_dots_repeat/plate1Config.ini\"
+${FIJI_PATH}/ImageJ-linux64 --ij2 --headless --run scripts/cellStats.py cfgPath=\"/media/nwalczak/XFS_Test/Resilio\ Sync/Resilio/2017_08_28\ polka_dots_repeat/plate1Config.ini\"
 checkFailure "polka_dots_repeat plate1"
-#${FIJI_PATH}/ImageJ-linux64 --ij2 --headless --run scripts/cellStats.py cfgPath=\"/media/nwalczak/XFS_Test/Resilio\ Sync/Resilio/2017_08_28\ polka_dots_repeat/plate3Config.ini\"
+${FIJI_PATH}/ImageJ-linux64 --ij2 --headless --run scripts/cellStats.py cfgPath=\"/media/nwalczak/XFS_Test/Resilio\ Sync/Resilio/2017_08_28\ polka_dots_repeat/plate3Config.ini\"
 checkFailure "polka_dots_repeat plate3"
 
 #total_size_dependence
