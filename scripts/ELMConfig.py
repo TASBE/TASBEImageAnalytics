@@ -120,7 +120,7 @@ class ConfigParams:
                 print("\t" + key + ":\t" + str(self.params[key]))
             else:
                 print("\t" + key + ":\t" + self.params[key])
-        print("\n")
+        print("")
 
     ###
     #  Get the Z string in the filename, given the current Z and using the configs max num Z

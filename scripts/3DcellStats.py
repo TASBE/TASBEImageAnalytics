@@ -52,7 +52,7 @@ def main(cfg):
 
     print "Processing input dir " + cfg.getValue(ELMConfig.inputDir);
     print "Outputting in " + cfg.getValue(ELMConfig.outputDir);
-    print "\n\n"
+    print ""
 
     # Get all images in the input dir
     imgFiles = glob.glob(os.path.join(cfg.getValue(ELMConfig.inputDir), "*.tif"))
@@ -139,8 +139,7 @@ def main(cfg):
         processDataset(cfg, wellName, dsImgFiles)
         end = time.time()
         print("Processed well " + wellName + " in " + str(end - start) + " s")
-        print("\n\n")
-
+        print("")
 
 ####
 #
@@ -277,6 +276,8 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
             WindowManager.setTempCurrentImage(currIP);
             IJ.saveAs('png', os.path.join(wellPath, "Binary_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
 
+        numExclusionPts = 0;
+        numColorThreshPts = 0
         currProcessor = currIP.getProcessor()
         for x in range(0, currIP.getWidth()) :
             for y in range(0,currIP.getHeight()) :
@@ -297,19 +298,26 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
 
                     if (pcloudColorThresh and pcloudExclusion):
                         points.append([ptX, ptY, ptZ, red, green, blue])
+                    elif (not pcloudColorThresh):
+                        numColorThreshPts += 1
+                    elif (not pcloudExclusion):
+                        numExclusionPts += 1
 
         currIP.close()
         origImage.close()
         upperThreshImg.close()
 
+    print "\t\tColor Threshold Skipped " + str(numColorThreshPts) + " points."
+    print "\t\tExclusion Zone  Skipped " + str(numExclusionPts) + " points."
     print ""
     
+    numPoints = len(points);
     cloudName = chanName + "_cloud.ply"
     resultsFile = open(os.path.join(wellPath, cloudName), "w")
     
     resultsFile.write("ply\n")
     resultsFile.write("format ascii 1.0\n")
-    resultsFile.write("element vertex " + str(len(points)) + "\n")
+    resultsFile.write("element vertex " + str(numPoints) + "\n")
     resultsFile.write("property float x\n")
     resultsFile.write("property float y\n")
     resultsFile.write("property float z\n")
@@ -321,7 +329,10 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
         resultsFile.write("%f %f %f %d %d %d\n" % (line[0], line[1], line[2], line[3], line[4], line[5]))
     resultsFile.close()
 
-    compute3DStats(cfg, wellPath, chanName, cloudName)
+    if (numPoints > 0):
+        compute3DStats(cfg, wellPath, chanName, cloudName)
+    else:
+        print "Skipping segmentation, because cloud has no points!"
 
 ####
 #
@@ -369,6 +380,7 @@ except NameError:
         quit(1)
     cfgPath = sys.argv[1]
     
+print("***************************************************************")    
 # Load the configuration file
 cfg = ELMConfig.ConfigParams()
 rv = cfg.loadConfig(cfgPath)
@@ -383,3 +395,5 @@ main(cfg)
 end = time.time()
 
 print("Processed all images in " + str(end - start) + " s")
+print("***************************************************************")
+print("\n\n")
