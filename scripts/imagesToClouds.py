@@ -45,9 +45,6 @@ def printUsage():
 #
 ####
 def main(cfg):
-    # Input Params
-    # TODO: should find a way to input besides hardcoding
-
     print "Processing input dir " + cfg.getValue(ELMConfig.inputDir);
     print "Outputting in " + cfg.getValue(ELMConfig.outputDir);
     print "\n\n"
@@ -202,8 +199,8 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
             WindowManager.setTempCurrentImage(currIP);
             IJ.saveAs('png', os.path.join(wellPath, "Orig_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
         # We need to get to a grayscale image, which will be done differently for different channels
-        rv = ELMImageUtils.getGrayScaleImage(currIP, c, z, zStr, chanStr, chanName, cfg, wellPath, wellName)
-        if (not rv) :
+        currIP = ELMImageUtils.getGrayScaleImage(currIP, c, z, zStr, chanStr, chanName, cfg, wellPath, wellName)
+        if (not currIP) :
             continue
 
 
