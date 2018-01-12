@@ -1,9 +1,7 @@
 from ij import IJ, ImagePlus, VirtualStack, WindowManager
-from ij.process import ImageConverter, ImageProcessor, ByteProcessor, ColorProcessor
+from ij.process import ColorProcessor
 from ij.measure import ResultsTable
-from ij.plugin import ChannelSplitter, ImageCalculator
-from ij.gui import Roi
-#from ij.plugin.frame import RoiManager
+
 from ij.plugin.filter import ParticleAnalyzer, Analyzer
 from ij.measure import Measurements
 
@@ -15,7 +13,7 @@ import os, glob, re, time, sys
 for path in os.environ['CLASSPATH'].split(os.pathsep):
     sys.path.append(path)
 
-import ELMConfig
+import ELMConfig, ELMImageUtils
 
 #
 #
@@ -68,9 +66,6 @@ def getCSVHeader(cfg):
 #
 ####
 def main(cfg):
-    # Input Params
-    # TODO: should find a way to input besides hardcoding
-
     print "Processing input dir " + cfg.getValue(ELMConfig.inputDir);
     print "Outputting in " + cfg.getValue(ELMConfig.outputDir);
     print "\n\n"
@@ -238,7 +233,7 @@ def processDataset(cfg, datasetName, imgFiles):
                 or (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.RED) \
                 or (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.GREEN) \
                 or (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.YELLOW): #
-            if not stats[c][ELMConfig.UM_AREA] :
+            if not stats[c][ELMConfig.UM_AREA]:
                 area = 0;
             else:
                 area = sum(stats[c][ELMConfig.UM_AREA])
@@ -297,99 +292,39 @@ def processImages(cfg, wellName, wellPath, images):
 
     for c in range(0, cfg.getValue(ELMConfig.numChannels)):
         chanStr = 'ch%(channel)02d' % {"channel" : c};
+        chanName = cfg.getValue(ELMConfig.chanLabel)[c]
+
+        # Set some config based upon channel
+        if (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.BRIGHTFIELD):
+            minCircularity = 0.001 # We want to identify one big cell ball, so ignore small less circular objects
+            minSize = 500
+        elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.BLUE) \
+                or (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.RED) \
+                or (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.GREEN): #
+            minCircularity = 0.001
+            minSize = 5
+        elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.YELLOW):
+            minCircularity = 0.001
+            minSize = 5
+        elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.SKIP):
+            continue
+
+        # Process images in Z stack
         for z in range(0, cfg.getValue(ELMConfig.numZ)):
             zStr = cfg.getZStr(z);
             currIP = images[c][z];
             resultsImage = currIP.duplicate()
+
             if cfg.getValue(ELMConfig.debugOutput):
-                WindowManager.setTempCurrentImage(currIP);
+                WindowManager.setTempCurrentImage(currIP)
                 IJ.saveAs('png', os.path.join(wellPath, "Orig_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
+
             # We need to get to a grayscale image, which will be done differently for different channels
-            if (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.BRIGHTFIELD):
-                toGray = ImageConverter(currIP)
-                toGray.convertToGray8()
-                minCircularity = 0.001 # We want to identify one big cell ball, so ignore small less circular objects
-                minSize = 500
-                darkBackground = False
-            elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.BLUE) \
-                    or (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.RED) \
-                    or (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.GREEN): #
-                chanIdx = 2
-                if (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.RED):
-                    chanIdx = 0
-                elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.GREEN):
-                    chanIdx = 1;
-                imgChanns = ChannelSplitter.split(currIP);
-                currIP = imgChanns[chanIdx];
-                minCircularity = 0.001
-                minSize = 5
-                darkBackground = True
-            elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.YELLOW):
-                title = currIP.getTitle()
-                # Create a new image that consists of the average of the red & green channels
-                width = currIP.getWidth();
-                height = currIP.getHeight();
-                newPix = ByteProcessor(width, height)
-                for x in range(0, width) :
-                    for y in range(0,height) :
-                        currPix = currIP.getPixel(x,y);
-                        newPix.putPixel(x, y, (currPix[0] + currPix[1]) / 2)
-                
-                currIP = ImagePlus(title, newPix)
-                minCircularity = 0.001
-                minSize = 5
-                darkBackground = True
-            elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.SKIP):
-                continue
-            WindowManager.setTempCurrentImage(currIP);
-
-            if cfg.getValue(ELMConfig.debugOutput):
-                IJ.saveAs('png', os.path.join(wellPath, "Processing_" + wellName + "_" + zStr + "_" + chanStr + ".png"))\
-
-            upperThreshImg = ImagePlus
-            upperThreshImg = currIP.duplicate()
-
-            currIP.getProcessor().setAutoThreshold("Default", darkBackground, ImageProcessor.NO_LUT_UPDATE)
-            threshRange = currIP.getProcessor().getMaxThreshold() - currIP.getProcessor().getMinThreshold()
-            print "\tChannel %14s threshold:\t [%d, %d]\t range: %d" % (cfg.getValue(ELMConfig.chanLabel)[c],currIP.getProcessor().getMinThreshold(), currIP.getProcessor().getMaxThreshold(), threshRange)
-            if currIP.getType() != ImagePlus.GRAY8 :
-                print "\tChannel " + cfg.getValue(ELMConfig.chanLabel)[c] + " is not GRAY8, instead type is %d" % currIP.getType()
-            if threshRange > 230:
-                print "\t\tIgnored Objects due to threshold range!"
+            currIP = ELMImageUtils.getGrayScaleImage(currIP, c, z, zStr, chanStr, chanName, cfg, wellPath, wellName)
+            if (not currIP):
+                resultsImage.close()
                 stats[c][ELMConfig.UM_AREA] = []
                 continue
-            IJ.run(currIP, "Convert to Mask", "")
-            IJ.run(currIP, "Close-", "")
-            
-            # Brightfield has an additional thresholding step
-            if cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.BRIGHTFIELD:
-                if cfg.getValue(ELMConfig.debugOutput):
-                    IJ.saveAs('png', os.path.join(wellPath, "OrigMask" + wellName + "_" + zStr + "_" + chanStr + ".png"))
-
-                upperThresh = 255 * 0.95
-                upperThreshImg.getProcessor().setThreshold(upperThresh, 255, ImageProcessor.NO_LUT_UPDATE)
-                IJ.run(upperThreshImg, "Convert to Mask", "")
-                IJ.run(upperThreshImg, "Close-", "")
-                if cfg.getValue(ELMConfig.debugOutput):
-                    WindowManager.setTempCurrentImage(upperThreshImg);
-                    IJ.saveAs('png', os.path.join(wellPath, "UpperThreshMask" + wellName + "_" + zStr + "_" + chanStr + ".png"))
-
-                ic = ImageCalculator()
-                compositeMask = ic.run("OR create", currIP, upperThreshImg)
-                IJ.run(compositeMask, "Close-", "")
-                currIP = compositeMask
-                WindowManager.setTempCurrentImage(currIP);                
-                
-            if cfg.getValue(ELMConfig.debugOutput):
-                WindowManager.setTempCurrentImage(currIP);
-                IJ.saveAs('png', os.path.join(wellPath, "Binary_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
-            currIP.setRoi(Roi(int(cfg.getValue(ELMConfig.analysisRoi)[0]), int(cfg.getValue(ELMConfig.analysisRoi)[1]), int(cfg.getValue(ELMConfig.analysisRoi)[2]), int(cfg.getValue(ELMConfig.analysisRoi)[3])))
-
-            if cfg.getValue(ELMConfig.debugOutput):
-                WindowManager.setTempCurrentImage(resultsImage);
-                IJ.saveAs('png', os.path.join(wellPath, "resultsImage" + wellName + "_" + zStr + "_" + chanStr + ".png"))
-                WindowManager.setTempCurrentImage(currIP);
-
             # Create a table to store the results
             table = ResultsTable()
             # Create a hidden ROI manager, to store a ROI for each blob or cell
@@ -451,6 +386,8 @@ def processImages(cfg, wellName, wellPath, images):
                 stats[c][table.getColumnHeading(col)] = table.getColumn(col)
 
             #currIP.hide()
+            currIP.close()
+            resultsImage.close()
 
     return stats
 
