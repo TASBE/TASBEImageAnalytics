@@ -37,6 +37,11 @@ struct MicroscopeProperties {
 				<< std::left << std::setw(15) << p.pixelDepth << std::endl;
 		return os;
 	}
+
+	/**
+	 * Get a multiplier to convert the given unit into micrometers.
+	 */
+	double getMultiplier(std::string unit);
 };
 
 

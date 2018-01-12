@@ -6,6 +6,9 @@
 
 namespace pt = boost::property_tree;
 
+/**
+ *
+ */
 bool MicroscopeProperties::readFromXML(const std::string & propXMLPath) {
 
 	boost::filesystem::path bPath(propXMLPath);
@@ -22,6 +25,8 @@ bool MicroscopeProperties::readFromXML(const std::string & propXMLPath) {
     	std::string dimId = v.second.get<std::string>("<xmlattr>.DimID");
     	double size = v.second.get<double>("<xmlattr>.Voxel");
     	int numElements = v.second.get<int>("<xmlattr>.NumberOfElements");
+    	std::string unit = v.second.get<std::string>("<xmlattr>.Unit");
+    	size *= getMultiplier(unit);
     	if (dimId == "X") {
     		this->pixelWidth = size;
     		this->imageWidth = numElements;
@@ -31,8 +36,25 @@ bool MicroscopeProperties::readFromXML(const std::string & propXMLPath) {
     	} else if (dimId == "Z") {
     		this->pixelDepth = size;
     	}
-
     }
 	return true;
+}
+
+
+/**
+ *
+ */
+double MicroscopeProperties::getMultiplier(std::string unit) {
+	double mult = 1.0;
+	if (unit == "m") {
+		mult = 1e6;
+	} else if (unit == "cm") {
+		mult = 1e4;
+	} else if (unit == "mm") {
+		mult = 1e3;
+	} else if (unit == "nm") {
+		mult = 1e-3;
+	}
+	return mult;
 }
 
