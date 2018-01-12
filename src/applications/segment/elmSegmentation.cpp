@@ -309,7 +309,6 @@ int main(const int argc, const char **argv) {
 	int maskScale = 255 / numClusters;
 	cout << "\tSegmented cloud in " << runTime << "ms!" << endl;
 	cout << "\tNum clusters: " << numClusters << endl;
-	cout << "\tCluster Sizes: " << numClusters << endl;
 	Mat segImage(numRows, numCols, CV_8UC1, Scalar(0));
 	PointCloud<PointXYZRGBL> clusterCloud;
 	std::stringstream ss;
@@ -357,6 +356,8 @@ int main(const int argc, const char **argv) {
 	ss.str(""); ss.clear();
 	ss << outPath << "/" << runName << "_segMask.png";
 	imwrite(ss.str(), colorClusterMap);
+
+	cout << endl << "Done!" << endl;
 }
 
 
