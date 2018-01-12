@@ -2,18 +2,22 @@ from ij.process import ImageConverter, ImageProcessor, ByteProcessor
 from ij.plugin import ChannelSplitter, ImageCalculator
 from ij import IJ, ImagePlus, WindowManager
 
+from java.awt import Color
+
 import os
 
 import ELMConfig
 
 
 def getGrayScaleImage(currIP, c, z, zStr, chanStr, chanName, cfg, wellPath, wellName):
-    # Clear the Exclusion zone, so it doesn't mess with  thresholding
-    imgProc = currIP.getProcessor();
-    imgProc.setColor(0)
-    imgProc.fillRect(cfg.getValue(ELMConfig.pcloudExclusionX), cfg.getValue(ELMConfig.pcloudExclusionY), currIP.getWidth(), currIP.getHeight())
-    
+    roiX = cfg.getValue(ELMConfig.pcloudExclusionX)
+    roiY = cfg.getValue(ELMConfig.pcloudExclusionY)
     if (chanName == ELMConfig.BRIGHTFIELD):
+        # Clear the Exclusion zone, so it doesn't mess with  thresholding
+        imgProc = currIP.getProcessor();
+        imgProc.setColor(Color(128,128,128))
+        imgProc.fillRect(roiX, roiY, currIP.getWidth(), currIP.getHeight())
+
         toGray = ImageConverter(currIP)
         toGray.convertToGray8()
         darkBackground = False
@@ -28,10 +32,20 @@ def getGrayScaleImage(currIP, c, z, zStr, chanStr, chanName, cfg, wellPath, well
         imgChanns = ChannelSplitter.split(currIP);
         currIP.close()
         currIP = imgChanns[chanIdx];
+
+        # Clear the Exclusion zone, so it doesn't mess with  thresholding
+        imgProc = currIP.getProcessor();
+        imgProc.setColor(Color(0,0,0))
+        imgProc.fillRect(roiX, roiY, currIP.getWidth(), currIP.getHeight())
         darkBackground = True
     elif (chanName == ELMConfig.YELLOW):
-        title = currIP.getTitle()
+        # Clear the Exclusion zone, so it doesn't mess with  thresholding
+        imgProc = currIP.getProcessor();
+        imgProc.setColor(Color(0,0,0))
+        imgProc.fillRect(roiX, roiY, currIP.getWidth(), currIP.getHeight())
+
         # Create a new image that consists of the average of the red & green channels
+        title = currIP.getTitle()
         width = currIP.getWidth();
         height = currIP.getHeight();
         newPix = ByteProcessor(width, height)
@@ -49,16 +63,16 @@ def getGrayScaleImage(currIP, c, z, zStr, chanStr, chanName, cfg, wellPath, well
     WindowManager.setTempCurrentImage(currIP);
 
     if cfg.getValue(ELMConfig.debugOutput):
-        IJ.saveAs('png', os.path.join(wellPath, "Processing_" + wellName + "_" + zStr + "_" + chanStr + ".png"))\
+        IJ.saveAs('png', os.path.join(wellPath, "Processing_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
 
     upperThreshImg = currIP.duplicate()
 
     currIP.getProcessor().setAutoThreshold("Default", darkBackground, ImageProcessor.NO_LUT_UPDATE)
     threshRange = currIP.getProcessor().getMaxThreshold() - currIP.getProcessor().getMinThreshold()
     if currIP.getType() != ImagePlus.GRAY8 :
-        print "\tChannel " + cfg.getValue(ELMConfig.chanLabel)[c] + " is not GRAY8, instead type is %d" % currIP.getType()
+        print "\tChannel " + chanName + " is not GRAY8, instead type is %d" % currIP.getType()
     if threshRange > 230:
-        print "\t\tZ = " + str(z) + ": Ignored Objects due to threshold range!"
+        print "\t\tZ = " + str(z) + " chan " + chanName + ": Ignored Objects due to threshold range!"
         currIP.close()
         return None
 
