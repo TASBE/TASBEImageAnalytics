@@ -45,9 +45,6 @@ def printUsage():
 #
 ####
 def main(cfg):
-    # Input Params
-    # TODO: should find a way to input besides hardcoding
-
     print "Processing input dir " + cfg.getValue(ELMConfig.inputDir);
     print "Outputting in " + cfg.getValue(ELMConfig.outputDir);
     print ""
@@ -218,7 +215,7 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
                     ptY = y * cfg.getValue(ELMConfig.pixelHeight)
                     ptZ = z * cfg.getValue(ELMConfig.pixelDepth);
                     colorPix = origImage.getPixel(x,y)
-                    red   = colorPix[0] 
+                    red   = colorPix[0]
                     green = colorPix[1]
                     blue  = colorPix[2]
                     # Check that point meets color threshold
