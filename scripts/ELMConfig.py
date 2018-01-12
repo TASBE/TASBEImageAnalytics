@@ -188,6 +188,7 @@ class ConfigParams:
                 self.params[dsNameIdx] = int(cfgParser.get(cfgSection, option))
             elif option == wellNames.lower():
                 toks = cfgParser.get(cfgSection, option).split(",")
+                self.params[wellNames] = []
                 for t in toks:
                     self.params[wellNames].append(t)
             elif option == debugOutput.lower():
