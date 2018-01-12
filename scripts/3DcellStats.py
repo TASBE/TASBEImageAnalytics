@@ -221,17 +221,17 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
                     green = colorPix[1]
                     blue  = colorPix[2]
                     # Check that point meets color threshold
-                    pcloudColorThresh = not cfg.hasValue(ELMConfig.pcloudColorThresh) \
+                    aboveColorThresh = not cfg.hasValue(ELMConfig.pcloudColorThresh) \
                         or colorPix[chanPixBand] > cfg.getValue(ELMConfig.pcloudColorThresh)
                     # Check that point isn't in exclusion zone
-                    pcloudExclusion = not (cfg.hasValue(ELMConfig.pcloudExclusionX) and cfg.hasValue(ELMConfig.pcloudExclusionY)) \
-                        or (ptX < cfg.getValue(ELMConfig.pcloudExclusionX) or ptY < cfg.getValue(ELMConfig.pcloudExclusionY))
+                    outsideExclusion = not (cfg.hasValue(ELMConfig.pcloudExclusionX) and cfg.hasValue(ELMConfig.pcloudExclusionY)) \
+                        or (x < cfg.getValue(ELMConfig.pcloudExclusionX) or y < cfg.getValue(ELMConfig.pcloudExclusionY))
 
-                    if (pcloudColorThresh and not pcloudExclusion):
+                    if (aboveColorThresh and outsideExclusion):
                         points.append([ptX, ptY, ptZ, red, green, blue])
-                    elif (not pcloudColorThresh):
+                    elif (not aboveColorThresh):
                         numColorThreshPts += 1
-                    elif (pcloudExclusion):
+                    elif (not outsideExclusion):
                         numExclusionPts += 1
 
         currIP.close()
@@ -240,8 +240,7 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
     print "\t\tTotal points considered: " + str(ptCount)
     print "\t\tColor Threshold Skipped " + str(numColorThreshPts) + " points."
     print "\t\tExclusion Zone  Skipped " + str(numExclusionPts) + " points."
-    print ""
-    
+
     numPoints = len(points);
     cloudName = chanName + "_cloud.ply"
     resultsFile = open(os.path.join(wellPath, cloudName), "w")
@@ -264,6 +263,8 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
         compute3DStats(cfg, wellPath, chanName, cloudName)
     else:
         print "Skipping segmentation, because cloud has no points!"
+
+    print ""
 
 ####
 #
