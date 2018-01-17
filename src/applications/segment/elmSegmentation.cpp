@@ -75,6 +75,12 @@ std::vector<PointIndices> segment(CloudPtr cloud,
 
 	std::vector<PointIndices> cluster_indices;
 
+	string outPath = segParams.getValue(SegParams::OUTPUT_DIR);
+	string runName;
+	if (segParams.hasParam(SegParams::RUN_NAME)) {
+		runName = segParams.getValue(SegParams::RUN_NAME);
+	}
+
 	if (!segParams.hasParam(SegParams::SEG_TYPE)
 			|| segParams.getValue(SegParams::SEG_TYPE)
 					== SegParams::ST_EUCLIDEAN) {
@@ -170,21 +176,6 @@ std::vector<PointIndices> segment(CloudPtr cloud,
 		PointCloud<PointXYZL>::Ptr lccpLblCld = svxLblCld->makeShared();
 		cpc.relabelCloud(*lccpLblCld);
 
-		map<uint32_t, PointIndices> ptIdxMap;
-		for (int i = 0; i < lccpLblCld->size(); i++) {
-			const PointXYZL & pt = lccpLblCld->points[i];
-			ptIdxMap[pt.label].indices.push_back(i);
-		}
-		for (auto &it : ptIdxMap) {
-			if (it.second.indices.size() > 5) {
-				cluster_indices.push_back(it.second);
-			}
-		}
-		std::sort(cluster_indices.rbegin(), cluster_indices.rend(),
-				[] (const PointIndices &a, const PointIndices &b) {
-					return (a.indices.size() < b.indices.size());
-				});
-
 		// Relabel Supervoxel IDs
 		vector<uint32_t> svxIds;
 		for (auto & it : supervoxelClusters) {
@@ -217,8 +208,25 @@ std::vector<PointIndices> segment(CloudPtr cloud,
 			pt.label = clusterRemap[pt.label];
 		}
 
-		io::savePLYFile("svCloud.ply", *svxLblCld, false);
-		io::savePLYFile("clusterCloud.ply", *lccpLblCld, false);
+		if (segParams.hasParam(SegParams::DEBUG)) {
+			std::stringstream ss;
+			ss << outPath << "/" << runName << "_debug_svCloud.ply";
+			io::savePLYFile(ss.str(), *svxLblCld, false);
+			ss.str(""); ss.clear();
+			ss << outPath << "/" << runName << "_debug_clusterCloud.ply";
+			io::savePLYFile(ss.str(), *lccpLblCld, false);
+		}
+
+		map<uint32_t, PointIndices> ptIdxMap;
+		for (int i = 0; i < lccpLblCld->size(); i++) {
+			const PointXYZL & pt = lccpLblCld->points[i];
+			ptIdxMap[pt.label].indices.push_back(i);
+		}
+		for (auto &it : ptIdxMap) {
+			if (it.second.indices.size() > 5) {
+				cluster_indices.push_back(it.second);
+			}
+		}
 
 	} else {
 		cout << "Unknown segmentation type: "
@@ -320,6 +328,12 @@ int main(const int argc, const char **argv) {
 			"avg red, avg green, avg blue, " << endl;
 	double ptVolume = scopeProps.pixelWidth * scopeProps.pixelHeight
 			* scopeProps.pixelDepth;
+	struct ClusterStat{
+		int clusterId;
+		int size;
+		ClusterStat(int id, int size) : clusterId(id), size(size) {}
+	};
+	vector<ClusterStat> clusterSizes;
 	for (auto it = clusterIndices.begin(); it != clusterIndices.end(); ++it) {
 		int totalRed, totalGreen, totalBlue;
 		totalRed = totalGreen = totalBlue = 0;
@@ -339,11 +353,20 @@ int main(const int argc, const char **argv) {
 				<< totalGreen << ", " << totalBlue << ", "
 				<< totalRed / numPoints << ", " << totalGreen / numPoints
 				<< ", " << totalBlue / numPoints << endl;
-		cout << "\t\tCluster " << currCluster << ", num pts: "
-				<< numPoints << endl;
+		clusterSizes.push_back(ClusterStat(currCluster, numPoints));
+
 		currCluster++;
 	}
 	clusterStats.close();
+
+	std::sort(clusterSizes.rbegin(), clusterSizes.rend(),
+			[] (const ClusterStat &a, const ClusterStat &b) {
+				return (a.size < b.size);
+			});
+	for (ClusterStat stat : clusterSizes) {
+		cout << "\t\tCluster " << setw(5) << right << stat.clusterId << ", num pts: "
+				<< stat.size << endl;
+	}
 
 	// Save cloud of labeled points
 	ss.str(""); ss.clear();
