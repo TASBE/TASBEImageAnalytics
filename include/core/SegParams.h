@@ -25,6 +25,7 @@ struct SegParams {
 	static const std::string OUTPUT_DIR;
 	static const std::string SCOPE_PROPERTIES;
 
+	static const std::string DEBUG;
 	static const std::string SEG_TYPE;
 	static const std::string EUC_CLUSTER_TOLERANCE;
 	static const std::string MIN_CLUSTER_SIZE;

@@ -24,6 +24,7 @@ const std::string SegParams::INPUT_BFP = "InputBFP";
 const std::string SegParams::OUTPUT_DIR = "OutputDir";
 const std::string SegParams::SCOPE_PROPERTIES = "MicroscopeProperties";
 
+const std::string SegParams::DEBUG = "Debug";
 const std::string SegParams::SEG_TYPE = "SegType";
 const std::string SegParams::EUC_CLUSTER_TOLERANCE = "EucClusterTolerance";
 const std::string SegParams::MIN_CLUSTER_SIZE = "MinClusterSize";
