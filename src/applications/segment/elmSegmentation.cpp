@@ -306,7 +306,7 @@ int main(const int argc, const char **argv) {
 
 	int numClusters = clusterIndices.size();
 	int currCluster = 1;
-	int maskScale = 255 / numClusters;
+	double maskScale = 255.0 / numClusters;
 	cout << "\tSegmented cloud in " << runTime << "ms!" << endl;
 	cout << "\tNum clusters: " << numClusters << endl;
 	Mat segImage(numRows, numCols, CV_8UC1, Scalar(0));
