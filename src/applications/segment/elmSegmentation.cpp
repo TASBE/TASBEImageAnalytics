@@ -137,6 +137,9 @@ std::vector<PointIndices> segment(CloudPtr cloud,
 			kFactor = 1;
 		}
 
+		// Don't display info messages, to avoid output from SuperVoxel
+		pcl::console::setVerbosityLevel(console::VERBOSITY_LEVEL::L_ERROR);
+
 		cout << "\tCreating Supervoxels" << endl;
 		SupervoxelClustering<PointT> super(voxelResolution, seedResolution);
 		super.setUseSingleCameraTransform(useSingleCamTransform);
@@ -363,9 +366,10 @@ int main(const int argc, const char **argv) {
 			[] (const ClusterStat &a, const ClusterStat &b) {
 				return (a.size < b.size);
 			});
-	for (ClusterStat stat : clusterSizes) {
-		cout << "\t\tCluster " << setw(5) << right << stat.clusterId << ", num pts: "
-				<< stat.size << endl;
+	cout << "Top 10 largest clusters: " << endl;
+	for (int i = 0; i < clusterSizes.size() && i < 10; i++) {
+		cout << "\t\tCluster " << setw(5) << right << clusterSizes[i].clusterId
+				<< ", num pts: " << clusterSizes[i].size << endl;
 	}
 
 	// Save cloud of labeled points
