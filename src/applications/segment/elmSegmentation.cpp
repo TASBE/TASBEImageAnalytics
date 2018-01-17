@@ -353,6 +353,14 @@ int main(const int argc, const char **argv) {
 	// Save 2D projection of segments
 	Mat colorClusterMap;
 	applyColorMap(segImage, colorClusterMap, COLORMAP_JET);
+	for (int r = 0; r < segImage.rows; r++) {
+		for (int c = 0; c < segImage.cols; c++) {
+			if (segImage.at<uchar>(r,c) == 0) {
+				colorClusterMap.at<Vec3b>(r,c) = Vec3b(0,0,0);
+			}
+		}
+	}
+
 	ss.str(""); ss.clear();
 	ss << outPath << "/" << runName << "_segMask.png";
 	imwrite(ss.str(), colorClusterMap);
