@@ -10,6 +10,7 @@ UM_AREA = "Area (um^2)"
 
 import re, ConfigParser
 import xml.etree.ElementTree as ElementTree
+import TIFF_Tags as TiffTags
 
 #
 # Stackoverflow code for numerically sorting strings
@@ -56,6 +57,8 @@ pcloudColorThresh = "pcloudColorThresh"
 pcloudExclusionX  = "pcloudExclusionX"
 pcloudExclusionY  = "pcloudExclusionY"
 
+CYTATION_METADATA_TIFF_TAG = 270
+
 ####
 #
 #  The Config Class - storing configuration info
@@ -63,6 +66,8 @@ pcloudExclusionY  = "pcloudExclusionY"
 ####
 class ConfigParams:
     params = dict()
+    
+    isCytation = False
 
     ###
     #
@@ -84,7 +89,17 @@ class ConfigParams:
         #self.params[pixelWidth] = 1; # in micrometers
         #self.params[wellNames] = [] # List of well names to process, empty implies process all
         self.params[debugOutput] =  False; # If true, additional info will be output
-    
+
+
+
+    ###
+    #
+    ###
+    def isCytation(self):
+        return self.isCytation
+
+
+
     ###
     #
     ###
@@ -130,6 +145,15 @@ class ConfigParams:
             return 'z%(depth)02d' % {"depth" : z};
         else:
             return 'z%(depth)03d' % {"depth" : z};
+        
+    ###
+    #  Get the Z string in the filename, given the current Z and using the configs max num Z
+    ###
+    def getCStr(self, c):
+        if self.isCytation:
+            return self.getValue(chanLabel)[c];
+        else:
+            return 'ch%(channel)02d' % {"channel" : c};
 
 
     ###
@@ -175,7 +199,7 @@ class ConfigParams:
             elif option == chanLabel.lower():
                 toks = cfgParser.get(cfgSection, option).split(",")
                 if not len(toks) == numChan:
-                    print "Improper value for chanLabel config, expected " + numChan + " comma separated values!  Received " + str(len(toks))
+                    print "Improper value for chanLabel config, expected " + str(numChan) + " comma separated values!  Received " + str(len(toks))
                 self.params[chanLabel] = []
                 for tok in toks:
                     self.params[chanLabel].append(tok.strip())
@@ -198,6 +222,75 @@ class ConfigParams:
         
         return True
 
+
+    ####
+    #
+    # Given a path to a an image, check to see if it contains the Cytation
+    # metadata in a TIF tag. 
+    #
+    ####    
+    def checkCytationMetadata(self, pathToImage):
+        global GREEN
+        global BRIGHTFIELD
+
+        cytationMetadata = TiffTags.getTag(pathToImage, CYTATION_METADATA_TIFF_TAG, 1)
+        cytationMetadata = cytationMetadata[0:cytationMetadata.rfind('>') + 1]
+        # Check that we have metdata
+        if not cytationMetadata:
+            return
+        xmlRoot = ElementTree.fromstring(cytationMetadata)
+        imgAcq = xmlRoot.find("ImageAcquisition")
+        imgRef = xmlRoot.find("ImageReference")
+
+        # if we don't have the right XML elements, maybe not Cytation
+        if imgAcq is None or imgRef is None:
+            return
+        
+        self.isCytation = True
+        
+        # Need to alter channel names, as the Cytation uses different names
+        GREEN = "GFP"
+        BRIGHTFIELD = "Phase Contrast"
+        
+        numXPix = int(imgAcq.find("PixelWidth").text)
+        numYPix = int(imgAcq.find("PixelHeight").text)
+        imgWidth = float(imgAcq.find("ImageWidthMicrons").text)
+        imgHeight = float(imgAcq.find("ImageHeightMicrons").text)
+            
+        self.params[pixelWidth] = imgWidth / numXPix
+        self.params[pixelHeight] = imgHeight / numYPix
+        
+        self.params[numZ] = int(imgRef.find("ZStackTotal").text)
+        self.params[pixelDepth] = int(imgRef.find("ZStackStepSizeMicrons").text)
+        self.params[numChannels] = int(imgRef.find("MeasurementTotal").text)
+
+
+
+    ####
+    #
+    # Given a path of images, parse all Cytation metadata to get channel names
+    #
+    ####    
+    def getCytationChanNames(self, imgFiles):
+        chanNames = set()
+        for imgF in imgFiles:
+            cytationMetadata = TiffTags.getTag(imgF, CYTATION_METADATA_TIFF_TAG, 1)
+            cytationMetadata = cytationMetadata[0:cytationMetadata.rfind('>') + 1]
+            xmlRoot = ElementTree.fromstring(cytationMetadata)
+            imgAcq = xmlRoot.find("ImageAcquisition")
+            chanEle = imgAcq.find("Channel")
+            chanNames.add(chanEle.get("Color"))
+        if not len(chanNames) == self.getValue(numChannels):
+            print "CytationChanNames: number of channels doesn't equal found names!"
+            print "Num Expected Channels: " + str(self.getValue(numChannels))
+            print "Found Names: " + chanNames
+         
+         
+        self.params[chanLabel] = []
+        for ch in chanNames:
+            self.params[chanLabel].append(ch)
+            
+    
 
     ####
     #
