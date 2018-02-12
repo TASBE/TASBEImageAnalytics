@@ -10,8 +10,15 @@ import ELMConfig
 
 
 def getGrayScaleImage(currIP, c, z, zStr, chanStr, chanName, cfg, wellPath, wellName):
-    roiX = cfg.getValue(ELMConfig.pcloudExclusionX)
-    roiY = cfg.getValue(ELMConfig.pcloudExclusionY)
+    if (cfg.hasValue(ELMConfig.pcloudExclusionX)):
+        roiX = cfg.getValue(ELMConfig.pcloudExclusionX)
+    else:
+        roiX = currIP.getWidth()
+    if (cfg.hasValue(ELMConfig.pcloudExclusionY)):
+        roiY = cfg.getValue(ELMConfig.pcloudExclusionY)
+    else:
+        roiY = currIP.getHeight()
+
     if (chanName == ELMConfig.BRIGHTFIELD):
         # Clear the Exclusion zone, so it doesn't mess with  thresholding
         imgProc = currIP.getProcessor();
