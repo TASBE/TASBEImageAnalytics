@@ -80,6 +80,13 @@ def main(cfg):
     # Sort filenames so they are in order by z and ch
     ELMConfig.sort_nicely(imgFiles)
 
+    # Check for Cytation metadata
+    cfg.checkCytationMetadata(imgFiles[0])
+    # If we have cytation data, we need to scan whole set in order to get all
+    # of the channel names, unless they are already specified
+    if cfg.isCytation and not cfg.hasValue(ELMConfig.chanLabel):
+        cfg.getCytationChanNames(imgFiles)
+
     # Get the names of all wells that exist in this dataset/plate
     wellNames = []
     # Each well will have a collection of images, but will all fall under the same common prefix descriptor
@@ -97,6 +104,9 @@ def main(cfg):
         toks = os.path.splitext(fileName)[0].split("_")
         # Parse file name to get indices of certain values
         tIdx = zIdx = chIdx = sys.maxint
+        # On the Cytation scope, time is the last token
+        if cfg.isCytation:
+            tIdx = len(toks) - 1 
         wellIndex = sys.maxint # This will be the lowest index that matches the well expression
         for i in range(0, len(toks)):
             if timeRE.match(toks[i]):
@@ -110,8 +120,9 @@ def main(cfg):
         
         minInfoIdx = min(tIdx, min(zIdx, chIdx))
         wellNames.append(toks[wellIndex])
-        wellDesc[toks[wellIndex]] = fileName[0:fileName.find(toks[minInfoIdx]) - 1]
-        noZInFile[toks[wellIndex]] = zIdx == -1        
+        if not minInfoIdx == sys.maxint:
+            wellDesc[toks[wellIndex]] = fileName[0:fileName.find(toks[minInfoIdx]) - 1]
+        noZInFile[toks[wellIndex]] = zIdx == -1       
 
     uniqueNames = list(set(wellNames))
     ELMConfig.sort_nicely(uniqueNames)
@@ -119,8 +130,8 @@ def main(cfg):
     # Try to determine pixel size from Leica properties
     metadataDir = os.path.join(cfg.getValue(ELMConfig.inputDir), "MetaData")
     metadataExists = True
-    if not os.path.exists(metadataDir):
-        print "No MetaData directory in input dir! Can't read properties!"
+    if not os.path.exists(metadataDir) and not cfg.isCytation:
+        print "No MetaData directory in input dir! Can't read Leica properties!"
         metadataExists = False;
 
     # Process each well
@@ -148,7 +159,7 @@ def main(cfg):
                 continue;
             cfg.updateCfgWithXML(xmlFile)
             cfg.setValue(ELMConfig.noZInFile, noZInFile[wellName] or cfg.getValue(ELMConfig.numZ) == 1)
-        
+
         print ("Beginning well " + wellName + "...")
         cfg.printCfg()
         start = time.time()
@@ -181,7 +192,7 @@ def processDataset(cfg, datasetName, imgFiles):
     imgFileCats = [[[] for z in range(cfg.getValue(ELMConfig.numZ))] for c in range(cfg.getValue(ELMConfig.numChannels))]
     addedImages = False
     for c in range(0, cfg.getValue(ELMConfig.numChannels)):
-        chanStr = 'ch%(channel)02d' % {"channel" : c};
+        chanStr = cfg.getCStr(c)
         for z in range(0, cfg.getValue(ELMConfig.numZ)):
             zStr = cfg.getZStr(z);
             for imgPath in imgFiles:
@@ -217,7 +228,7 @@ def processDataset(cfg, datasetName, imgFiles):
     resultsFile.write(getCSVHeader(cfg));
     channelAreas = dict() 
     for c in range(0, cfg.getValue(ELMConfig.numChannels)) :
-        chanStr = '_ch%(channel)02d_' % {"channel" : c};
+        chanStr = '_' + cfg.getCStr(c) + '_'
         area = 0;
         writeStats = False
         # Handle brigthfield channel
