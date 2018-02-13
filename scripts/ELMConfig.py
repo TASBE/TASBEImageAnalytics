@@ -8,7 +8,7 @@ SKIP = "Skip"
 
 UM_AREA = "Area (um^2)"
 
-import re, ConfigParser
+import re, os,  ConfigParser
 import xml.etree.ElementTree as ElementTree
 import TIFF_Tags as TiffTags
 
@@ -40,8 +40,11 @@ cfgSection = "ImageJConfig"
 elmSegPath = "elmSegPath"
 scopeProperties = "scopeProperties"
 numChannels = "numChannels"
+numTimesteps = "numTimesteps"
 numZ = "numZ"
+numT = "numT"
 noZInFile = "noZInFile"
+noTInFile = "noTInFile"
 chanLabel ="ChanLabel"
 chansToSkip = "ChansToSkip"
 inputDir = "inputDir"
@@ -75,7 +78,9 @@ class ConfigParams:
     def __init__(self):
         self.params[numChannels] = 4;
         self.params[numZ] = 1;
+        self.params[numT] = 1;
         self.params[noZInFile] = True;
+        self.params[noTInFile] = True;
         self.params[chanLabel] = [SKIP, YELLOW, BLUE, BRIGHTFIELD];
         self.params[chansToSkip] = [];
         self.params[inputDir] = '';
@@ -95,7 +100,7 @@ class ConfigParams:
     ###
     #
     ###
-    def isCytation(self):
+    def isCytationConfig(self):
         return self.isCytation
 
 
@@ -147,13 +152,48 @@ class ConfigParams:
             return 'z%(depth)03d' % {"depth" : z};
         
     ###
-    #  Get the Z string in the filename, given the current Z and using the configs max num Z
+    #  Get the channel string in the filename, given the current C and using the configs channel labels
     ###
     def getCStr(self, c):
         if self.isCytation:
             return self.getValue(chanLabel)[c];
         else:
             return 'ch%(channel)02d' % {"channel" : c};
+
+
+    ###
+    #  Get the T string in the filename, given the current T and using the configs max num T
+    ###
+    def getTStr(self, t):
+        if self.isCytation:
+            if self.params[numT] < 100:
+                return '%(depth)02d' % {"depth" : t};
+            else:
+                return '%(depth)03d' % {"depth" : t};
+        else:
+            if self.params[numT] < 100:
+                return 't%(depth)02d' % {"depth" : t};
+            else:
+                return 't%(depth)03d' % {"depth" : t};
+
+
+    ###
+    #  Determine if the filename is a match for the given channel, z and time
+    #  indexes.
+    ###
+    def matchFilename(self, fileName, c, z, t):
+        cStr = self.getCStr(c)
+        zStr = self.getCStr(z)
+        tStr = self.getCStr(t)
+        
+        cMatch = cStr in fileName
+        zMatch = self.getValue(noZInFile) or zStr in fileName
+        if self.isCytation:
+            tMatch = self.getValue(noTInFile) or tStr == os.path.splitext(fileName)[0].split("_")[-1]
+        else:
+            tMatch = self.getValue(noTInFile) or tStr in fileName
+            
+        return cMatch and zMatch and tMatch
 
 
     ###
@@ -167,10 +207,11 @@ class ConfigParams:
             print "Config file doesn't contain [" + cfgSection + "] section! Path: " + cfgPath;
             return False
 
-        if cfgParser.has_option(cfgSection, "numchannels") :
-            numChan = int(cfgParser.get(cfgSection, "numchannels"))
+        if cfgParser.has_option(cfgSection, numChannels.lower()) :
+            numChan = int(cfgParser.get(cfgSection, numChannels.lower()))
         else:
             numChan = self.params[numChannels]
+
         for optionRaw in cfgParser.options(cfgSection):
             option = optionRaw.lower()
             if option == inputDir.lower():
@@ -181,8 +222,12 @@ class ConfigParams:
                 self.params[outputDir] = cfgParser.get(cfgSection, option)
             elif option == numChannels.lower():
                 self.params[numChannels] = int(cfgParser.get(cfgSection, option))
+            elif option == numTimesteps.lower():
+                self.params[numTimesteps] = int(cfgParser.get(cfgSection, option))
             elif option == numZ.lower():
                 self.params[numZ] = int(cfgParser.get(cfgSection, option))
+            elif option == numT.lower():
+                self.params[numT] = int(cfgParser.get(cfgSection, option))
             elif option == pcloudColorThresh.lower():
                 self.params[pcloudColorThresh] = int(cfgParser.get(cfgSection, option))
             elif option == pcloudExclusionX.lower():
@@ -191,6 +236,8 @@ class ConfigParams:
                 self.params[pcloudExclusionY] = int(cfgParser.get(cfgSection, option))
             elif option == noZInFile.lower():
                 self.params[noZInFile]  = cfgParser.get(cfgSection, option) == "True"
+            elif option == noTInFile.lower():
+                self.params[noTInFile]  = cfgParser.get(cfgSection, option) == "True"
             elif option == chansToSkip.lower():
                 toks = cfgParser.get(cfgSection, option).split(",")
                 self.params[chansToSkip] = []
