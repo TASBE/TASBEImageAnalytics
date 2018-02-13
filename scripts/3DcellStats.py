@@ -203,7 +203,8 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
             IJ.saveAs('png', os.path.join(wellPath, "Orig_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
             
         # We need to get to a grayscale image, which will be done differently for different channels
-        currIP = ELMImageUtils.getGrayScaleImage(currIP, c, z, zStr, chanStr, chanName, cfg, wellPath, wellName)
+        dbgOutDesc = wellName + "_" + zStr + "_" + chanStr
+        currIP = ELMImageUtils.getGrayScaleImage(currIP, c, z, chanName, cfg, wellPath, dbgOutDesc)
         if (not currIP) :
             continue
 
