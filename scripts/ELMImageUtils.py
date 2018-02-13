@@ -9,7 +9,7 @@ import os
 import ELMConfig
 
 
-def getGrayScaleImage(currIP, c, z, zStr, chanStr, chanName, cfg, wellPath, wellName):
+def getGrayScaleImage(currIP, c, z, chanName, cfg, wellPath, dbgOutDesc):
     if (cfg.hasValue(ELMConfig.pcloudExclusionX)):
         roiX = cfg.getValue(ELMConfig.pcloudExclusionX)
     else:
@@ -70,7 +70,7 @@ def getGrayScaleImage(currIP, c, z, zStr, chanStr, chanName, cfg, wellPath, well
     WindowManager.setTempCurrentImage(currIP);
 
     if cfg.getValue(ELMConfig.debugOutput):
-        IJ.saveAs('png', os.path.join(wellPath, "Processing_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
+        IJ.saveAs('png', os.path.join(wellPath, "Processing_" + dbgOutDesc + ".png"))
 
     upperThreshImg = currIP.duplicate()
 
@@ -89,7 +89,7 @@ def getGrayScaleImage(currIP, c, z, zStr, chanStr, chanName, cfg, wellPath, well
     # Brightfield has an additional thresholding step
     if cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.BRIGHTFIELD:
         if cfg.getValue(ELMConfig.debugOutput):
-            IJ.saveAs('png', os.path.join(wellPath, "OrigMask" + wellName + "_" + zStr + "_" + chanStr + ".png"))
+            IJ.saveAs('png', os.path.join(wellPath, "OrigMask_" + dbgOutDesc + ".png"))
 
         upperThresh = 255 * 0.95
         upperThreshImg.getProcessor().setThreshold(upperThresh, 255, ImageProcessor.NO_LUT_UPDATE)
@@ -97,7 +97,7 @@ def getGrayScaleImage(currIP, c, z, zStr, chanStr, chanName, cfg, wellPath, well
         IJ.run(upperThreshImg, "Close-", "")
         if cfg.getValue(ELMConfig.debugOutput):
             WindowManager.setTempCurrentImage(upperThreshImg);
-            IJ.saveAs('png', os.path.join(wellPath, "UpperThreshMask" + wellName + "_" + zStr + "_" + chanStr + ".png"))
+            IJ.saveAs('png', os.path.join(wellPath, "UpperThreshMask_" + dbgOutDesc + ".png"))
 
         ic = ImageCalculator()
         compositeMask = ic.run("OR create", currIP, upperThreshImg)
@@ -108,7 +108,7 @@ def getGrayScaleImage(currIP, c, z, zStr, chanStr, chanName, cfg, wellPath, well
         
     if cfg.getValue(ELMConfig.debugOutput):
             WindowManager.setTempCurrentImage(currIP);
-            IJ.saveAs('png', os.path.join(wellPath, "Binary_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
+            IJ.saveAs('png', os.path.join(wellPath, "Binary_" + dbgOutDesc + ".png"))
     
     upperThreshImg.close()
     return currIP
