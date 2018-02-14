@@ -84,8 +84,11 @@ def main(cfg):
     cfg.checkCytationMetadata(imgFiles[0])
     # If we have cytation data, we need to scan whole set in order to get all
     # of the channel names, unless they are already specified
-    if cfg.isCytation and not cfg.hasValue(ELMConfig.chanLabel):
-        cfg.getCytationChanNames(imgFiles)
+    if cfg.isCytation:
+        if not cfg.hasValue(ELMConfig.chanLabel):
+            cfg.getCytationChanNames(imgFiles)
+        else:
+            cfg.checkSkipChans()
 
     # Get the names of all wells that exist in this dataset/plate
     wellNames = []
@@ -138,8 +141,10 @@ def main(cfg):
     # Try to determine pixel size from Leica properties
     metadataDir = os.path.join(cfg.getValue(ELMConfig.inputDir), "MetaData")
     metadataExists = True
-    if not os.path.exists(metadataDir) and not cfg.isCytation:
+    if not os.path.exists(metadataDir) or not cfg.isCytation:
         print "No MetaData directory in input dir! Can't read Leica properties!"
+        metadataExists = False;
+    elif cfg.isCytation:
         metadataExists = False;
 
     # Process each well
