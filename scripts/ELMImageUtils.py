@@ -9,7 +9,7 @@ import os
 import ELMConfig
 
 
-def getGrayScaleImage(currIP, c, z, chanName, cfg, wellPath, dbgOutDesc):
+def getGrayScaleImage(currIP, c, z, t, chanName, cfg, wellPath, dbgOutDesc):
     if (cfg.hasValue(ELMConfig.pcloudExclusionX)):
         roiX = cfg.getValue(ELMConfig.pcloudExclusionX)
     else:
@@ -98,7 +98,7 @@ def getGrayScaleImage(currIP, c, z, chanName, cfg, wellPath, dbgOutDesc):
     if currIP.getType() != ImagePlus.GRAY8:
         print "\tChannel " + chanName + " is not GRAY8, instead type is %d" % currIP.getType()
     if threshRange > 230:
-        print "\t\tZ = " + str(z) + " chan " + chanName + ": Ignored Objects due to threshold range!"
+        print "\t\tZ = " + str(z) + ", T = " + str(t) +  ", chan " + chanName + ": Ignored Objects due to threshold range!"
         currIP.close()
         return None
 
