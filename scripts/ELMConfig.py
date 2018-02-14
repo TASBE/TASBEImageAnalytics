@@ -167,14 +167,14 @@ class ConfigParams:
     def getTStr(self, t):
         if self.isCytation:
             if self.params[numT] < 100:
-                return '%(depth)02d' % {"depth" : t};
+                return '%(time)02d' % {"time" : t};
             else:
-                return '%(depth)03d' % {"depth" : t};
+                return '%(time)03d' % {"time" : t};
         else:
             if self.params[numT] < 100:
-                return 't%(depth)02d' % {"depth" : t};
+                return 't%(time)02d' % {"time" : t};
             else:
-                return 't%(depth)03d' % {"depth" : t};
+                return 't%(time)03d' % {"time" : t};
 
 
     ###
@@ -183,12 +183,14 @@ class ConfigParams:
     ###
     def matchFilename(self, fileName, c, z, t):
         cStr = self.getCStr(c)
-        zStr = self.getCStr(z)
-        tStr = self.getCStr(t)
+        zStr = self.getZStr(z)
+        tStr = self.getTStr(t)
         
         cMatch = cStr in fileName
         zMatch = self.getValue(noZInFile) or zStr in fileName
         if self.isCytation:
+            t = t + 1 # Cytation starts at a timestep of 1, so offset time indices
+            tStr = self.getTStr(t) 
             tMatch = self.getValue(noTInFile) or tStr == os.path.splitext(fileName)[0].split("_")[-1]
         else:
             tMatch = self.getValue(noTInFile) or tStr in fileName
@@ -277,7 +279,7 @@ class ConfigParams:
     #
     ####    
     def checkCytationMetadata(self, pathToImage):
-        global GREEN
+        global RED, GREEN, BLUE, YELLOW 
         global BRIGHTFIELD
 
         cytationMetadata = TiffTags.getTag(pathToImage, CYTATION_METADATA_TIFF_TAG, 1)
@@ -297,6 +299,9 @@ class ConfigParams:
         
         # Need to alter channel names, as the Cytation uses different names
         GREEN = "GFP"
+        BLUE = "BFP"
+        YELLOW = "YFP"
+        RED = "Texas Red"
         BRIGHTFIELD = "Phase Contrast"
         
         numXPix = int(imgAcq.find("PixelWidth").text)
@@ -335,9 +340,23 @@ class ConfigParams:
          
         self.params[chanLabel] = []
         for ch in chanNames:
-            self.params[chanLabel].append(ch)
-            
-    
+            if ch in self.params[chansToSkip]:
+                self.params[chanLabel].append(SKIP)
+            else:
+                self.params[chanLabel].append(ch)
+
+
+    ####
+    #
+    # Replace any channel labels with skip, if necessary
+    #
+    ####    
+    def checkSkipChans(self):
+        for skipChan in self.params[chansToSkip]:
+            for i in range(0, len(self.params[chanLabel])):
+                if skipChan == self.params[chanLabel][i]:
+                    self.params[chanLabel][i] = SKIP
+
 
     ####
     #
