@@ -244,7 +244,8 @@ def processDataset(cfg, datasetName, imgFiles):
     # Output Results
     resultsFile = open(os.path.join(datasetPath, datasetName + "_results.csv"), "w")
     resultsFile.write(getCSVHeader(cfg));
-    channelAreas = dict() 
+    channelAreas = dict()
+    channelAreas["totalArea"] = 0
     for c in range(0, cfg.getValue(ELMConfig.numChannels)):
         for z in range(0, cfg.getValue(ELMConfig.numZ)):
             for t in range(0, cfg.getValue(ELMConfig.numT)):
@@ -368,7 +369,7 @@ def processImages(cfg, wellName, wellPath, images):
                     IJ.saveAs('png', os.path.join(outputPath, "Orig_" + dbgOutDesc +  ".png"))
 
                 # We need to get to a grayscale image, which will be done differently for different channels
-                currIP = ELMImageUtils.getGrayScaleImage(currIP, c, z, chanName, cfg, outputPath, dbgOutDesc)
+                currIP = ELMImageUtils.getGrayScaleImage(currIP, c, z, t, chanName, cfg, outputPath, dbgOutDesc)
 
                 if (not currIP):
                     resultsImage.close()
