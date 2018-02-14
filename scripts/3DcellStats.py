@@ -204,7 +204,7 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
             
         # We need to get to a grayscale image, which will be done differently for different channels
         dbgOutDesc = wellName + "_" + zStr + "_" + chanStr
-        currIP = ELMImageUtils.getGrayScaleImage(currIP, c, z, chanName, cfg, wellPath, dbgOutDesc)
+        currIP = ELMImageUtils.getGrayScaleImage(currIP, c, z, 1, chanName, cfg, wellPath, dbgOutDesc)
         if (not currIP) :
             continue
 
