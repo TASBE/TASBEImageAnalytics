@@ -249,9 +249,9 @@ def processDataset(cfg, datasetName, imgFiles):
     for c in range(0, cfg.getValue(ELMConfig.numChannels)):
         for z in range(0, cfg.getValue(ELMConfig.numZ)):
             for t in range(0, cfg.getValue(ELMConfig.numT)):
-                chanStr = '_' + cfg.getCStr(c) + '_'
-                zStr = '_' + cfg.getZStr(z) + '_'
-                tStr = '_' + cfg.getTStr(t) + '_'
+                chanStr = '_' + cfg.getCStr(c)
+                zStr = '_' + cfg.getZStr(z)
+                tStr = '_' + cfg.getTStr(t)
                 area = 0;
                 writeStats = False
                 # Handle brigthfield channel
@@ -284,7 +284,7 @@ def processDataset(cfg, datasetName, imgFiles):
                     continue
                 # Write out individual areas per channel
                 if writeStats:
-                    chanResultsFile = open(os.path.join(datasetPath, datasetName + chanStr + zStr + tStr + "stats.csv"), "w")
+                    chanResultsFile = open(os.path.join(datasetPath, datasetName + chanStr + zStr + tStr + "_stats.csv"), "w")
                     numParticles = len(stats[c][z][t][ELMConfig.UM_AREA])
                     # Writer Header
                     keys = sorted(stats[c][z][t].keys())
