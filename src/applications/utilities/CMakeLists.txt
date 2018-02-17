@@ -1,0 +1,4 @@
+ADD_EXECUTABLE(combinePCDs
+  combinePCDs.cpp
+)
+TARGET_LINK_LIBRARIES(combinePCDs ${PCL_LIBRARIES})

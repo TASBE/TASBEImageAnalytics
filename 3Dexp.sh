@@ -17,7 +17,7 @@ export CLASSPATH=$PWD:$PWD/scripts:${CLASSPATH}
 for cfgFile in "${CFG_PATH}"/*.ini
   do
     echo ${cfgFile}
-    ${FIJI_PATH}/ImageJ-linux64 --heap 10240M --headless --run scripts/imagesToClouds.py cfgPath=\"${cfgFile}\"
+    ${FIJI_PATH}/ImageJ-linux64 --heap 10240M --headless --run scripts/3DcellStats.py cfgPath=\"${cfgFile}\"
     checkFailure "${cfgFile}"
 done
 

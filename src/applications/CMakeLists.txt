@@ -1,0 +1,4 @@
+ADD_SUBDIRECTORY(segment)
+ADD_SUBDIRECTORY(utilities)
+ADD_SUBDIRECTORY(visualization)
+

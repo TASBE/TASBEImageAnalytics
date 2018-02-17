@@ -1,6 +1,6 @@
 from ij import IJ, WindowManager
 
-from java.lang import Double
+from subprocess import call
 import os, glob, re, time, sys
 
 # I'm not certain why, but when run in ImageJ it doesn't seem to adhere to the CLASSPATH env variable
@@ -17,7 +17,7 @@ def printUsage():
     global numChannels;
     global numZ;
     
-    print "This script will read tif files from an input directory and generate a 3D point cloud for each channel."
+    print "This script will read tif files from an input directory and compute statistics on 3D point clouds."
     print "The script must be pointed to a configuration ini file that will define several important aspects."
     print "The input and output dirs must be defined in the config file, however all of the rest of the config"
     print " can be read in from the microscope properties if they exist in the Metadata dir in the input."
@@ -47,7 +47,7 @@ def printUsage():
 def main(cfg):
     print "Processing input dir " + cfg.getValue(ELMConfig.inputDir);
     print "Outputting in " + cfg.getValue(ELMConfig.outputDir);
-    print "\n\n"
+    print ""
 
     # Get all images in the input dir
     imgFiles = glob.glob(os.path.join(cfg.getValue(ELMConfig.inputDir), "*.tif"))
@@ -71,6 +71,7 @@ def main(cfg):
     zRE    = re.compile("z[0-9]+$")
     chRE   = re.compile("^ch[0-9]+$")
     wellRE   = re.compile("^[a-zA-Z][0-9]+$")
+    wellRepeat = re.compile("repeat") # Special case of a well name
     for filePath in imgFiles:
         fileName = os.path.basename(filePath)
         toks = os.path.splitext(fileName)[0].split("_")
@@ -84,7 +85,7 @@ def main(cfg):
                 zIdx = i
             if chRE.match(toks[i]):
                 chIdx = i
-            if wellRE.match(toks[i]) and i < wellIndex:
+            if (wellRE.match(toks[i]) or wellRepeat.match(toks[i])) and i < wellIndex:
                 wellIndex = i
         
         minInfoIdx = min(tIdx, min(zIdx, chIdx))
@@ -133,8 +134,7 @@ def main(cfg):
         processDataset(cfg, wellName, dsImgFiles)
         end = time.time()
         print("Processed well " + wellName + " in " + str(end - start) + " s")
-        print("\n\n")
-
+        print("")
 
 ####
 #
@@ -170,7 +170,7 @@ def processDataset(cfg, datasetName, imgFiles):
 
 ####
 #
-#  All of the processing that happens for each image
+#  Process all images for a particular channel.
 #
 ####
 def processImages(cfg, wellName, wellPath, c, imgFiles):
@@ -201,7 +201,7 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
         if cfg.getValue(ELMConfig.debugOutput):
             WindowManager.setTempCurrentImage(currIP);
             IJ.saveAs('png', os.path.join(wellPath, "Orig_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
-
+            
         # We need to get to a grayscale image, which will be done differently for different channels
         dbgOutDesc = wellName + "_" + zStr + "_" + chanStr
         currIP = ELMImageUtils.getGrayScaleImage(currIP, c, z, 1, chanName, cfg, wellPath, dbgOutDesc)
@@ -223,17 +223,17 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
                     green = colorPix[1]
                     blue  = colorPix[2]
                     # Check that point meets color threshold
-                    pcloudColorThresh = not cfg.hasValue(ELMConfig.pcloudColorThresh) \
+                    aboveColorThresh = not cfg.hasValue(ELMConfig.pcloudColorThresh) \
                         or colorPix[chanPixBand] > cfg.getValue(ELMConfig.pcloudColorThresh)
                     # Check that point isn't in exclusion zone
-                    pcloudExclusion = not (cfg.hasValue(ELMConfig.pcloudExclusionX) and cfg.hasValue(ELMConfig.pcloudExclusionY)) \
-                        or (ptX < cfg.getValue(ELMConfig.pcloudExclusionX) or ptY < cfg.getValue(ELMConfig.pcloudExclusionY))
+                    outsideExclusion = not (cfg.hasValue(ELMConfig.pcloudExclusionX) and cfg.hasValue(ELMConfig.pcloudExclusionY)) \
+                        or (x < cfg.getValue(ELMConfig.pcloudExclusionX) or y < cfg.getValue(ELMConfig.pcloudExclusionY))
 
-                    if (pcloudColorThresh and not pcloudExclusion):
+                    if (aboveColorThresh and outsideExclusion):
                         points.append([ptX, ptY, ptZ, red, green, blue])
-                    elif (not pcloudColorThresh):
+                    elif (not aboveColorThresh):
                         numColorThreshPts += 1
-                    elif (pcloudExclusion):
+                    elif (not outsideExclusion):
                         numExclusionPts += 1
 
         currIP.close()
@@ -242,13 +242,14 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
     print "\t\tTotal points considered: " + str(ptCount)
     print "\t\tColor Threshold Skipped " + str(numColorThreshPts) + " points."
     print "\t\tExclusion Zone  Skipped " + str(numExclusionPts) + " points."
-    print ""
 
-    resultsFile = open(os.path.join(wellPath, chanName + "_cloud.ply"), "w")
+    numPoints = len(points);
+    cloudName = chanName + "_cloud.ply"
+    resultsFile = open(os.path.join(wellPath, cloudName), "w")
     
     resultsFile.write("ply\n")
     resultsFile.write("format ascii 1.0\n")
-    resultsFile.write("element vertex " + str(len(points)) + "\n")
+    resultsFile.write("element vertex " + str(numPoints) + "\n")
     resultsFile.write("property float x\n")
     resultsFile.write("property float y\n")
     resultsFile.write("property float z\n")
@@ -259,6 +260,37 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
     for line in points:
         resultsFile.write("%f %f %f %d %d %d\n" % (line[0], line[1], line[2], line[3], line[4], line[5]))
     resultsFile.close()
+
+    if (numPoints > 0):
+        compute3DStats(cfg, wellPath, chanName, cloudName)
+    else:
+        print "Skipping segmentation, because cloud has no points!"
+
+    print ""
+
+####
+#
+#  Use the saved pointcloud to compute stats
+#
+####    
+def compute3DStats(cfg, wellPath, chanName, cloudName):
+    # Create SegParams INI file
+    segIniPath = os.path.join(wellPath, chanName + "_segParams.ini")
+    segIniFile = open(segIniPath, "w")
+    segIniFile.write("[InputParameters]\n")
+    segIniFile.write("RunName=" + chanName + "Euc" + "\n")
+    segIniFile.write("InputCloud=" + os.path.join(wellPath, cloudName) + "\n")
+    segIniFile.write("OutputDir=" + os.path.join(wellPath, chanName + "Seg") + "\n")
+    segIniFile.write("MicroscopeProperties=" + cfg.getValue(ELMConfig.scopeProperties) + "\n")
+
+    segIniFile.write("[SegmentationParameters]\n")
+    segIniFile.write("SegType=Euclidean\n")
+    segIniFile.write("EucClusterTolerance = 12\n")
+    segIniFile.write("MinClusterSize = 5\n")
+    segIniFile.close()
+
+    elmSegBin = cfg.getValue(ELMConfig.elmSegPath)
+    call([elmSegBin, segIniPath])
 
 
 ####
@@ -282,6 +314,7 @@ except NameError:
         quit(1)
     cfgPath = sys.argv[1]
     
+print("***************************************************************")    
 # Load the configuration file
 cfg = ELMConfig.ConfigParams()
 rv = cfg.loadConfig(cfgPath)
@@ -296,3 +329,5 @@ main(cfg)
 end = time.time()
 
 print("Processed all images in " + str(end - start) + " s")
+print("***************************************************************")
+print("\n\n")
