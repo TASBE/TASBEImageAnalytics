@@ -2,6 +2,7 @@ from ij import IJ, ImagePlus, VirtualStack, WindowManager
 from ij.process import ColorProcessor
 from ij.measure import ResultsTable
 
+from ij.plugin import ChannelSplitter
 from ij.plugin.filter import ParticleAnalyzer, Analyzer
 from ij.measure import Measurements
 
@@ -71,10 +72,10 @@ def main(cfg):
     print "\n\n"
 
     # Get all images in the input dir
-    imgFiles = glob.glob(os.path.join(cfg.getValue(ELMConfig.inputDir), "*.tif"))
+    imgFiles = glob.glob(os.path.join(cfg.getValue(ELMConfig.inputDir), "*." + cfg.getValue(ELMConfig.imgType)))
     # Ensure we have tifs
     if (len(imgFiles) < 1):
-        print "No tif files found in input directory!  Input dir: " + cfg.getValue(ELMConfig.inputDir)
+        print "No " + cfg.getValue(ELMConfig.imgType) + " files found in input directory!  Input dir: " + cfg.getValue(ELMConfig.inputDir)
         quit(1)
 
     # Sort filenames so they are in order by z and ch
@@ -89,6 +90,9 @@ def main(cfg):
             cfg.getCytationChanNames(imgFiles)
         else:
             cfg.checkSkipChans()
+    
+    if cfg.params[ELMConfig.imgType] == "png":
+        cfg.checkSkipChans()
 
     # Get the names of all wells that exist in this dataset/plate
     wellNames = []
@@ -98,6 +102,10 @@ def main(cfg):
     noZInFile = dict()
     noTInFile = dict()
     maxT = dict()
+    numZ = dict()
+    pngTimesteps = dict()
+    pngZSlices = dict()
+
     # Analyze image filenames to get different pieces of information
     # We care about a time, Z, channel, and the well name
     timeRE = re.compile("^t[0-9]+$")
@@ -107,21 +115,28 @@ def main(cfg):
     for filePath in imgFiles:
         fileName = os.path.basename(filePath)
         toks = os.path.splitext(fileName)[0].split("_")
-        # Parse file name to get indices of certain values
-        tIdx = zIdx = chIdx = sys.maxint
-        wellIndex = sys.maxint # This will be the lowest index that matches the well expression
-        # On the Cytation scope, time is the last token
-        if cfg.isCytation:
-            tIdx = len(toks) - 1
-        for i in range(0, len(toks)):
-            if timeRE.match(toks[i]):
-                tIdx = i
-            if zRE.match(toks[i]):
-                zIdx = i
-            if chRE.match(toks[i]):
-                chIdx = i
-            if wellRE.match(toks[i]) and i < wellIndex:
-                wellIndex = i
+        
+        if (cfg.getValue(ELMConfig.imgType) == "png") :
+            wellIndex = ELMConfig.pngWellIndex
+            zIdx = ELMConfig.pngZIdx
+            tIdx = ELMConfig.pngTIdx
+            chIdx = sys.maxint
+        else :
+            # Parse file name to get indices of certain values
+            tIdx = zIdx = chIdx = sys.maxint
+            wellIndex = sys.maxint # This will be the lowest index that matches the well expression
+            # On the Cytation scope, time is the last token
+            if cfg.isCytation:
+                tIdx = len(toks) - 1
+            for i in range(0, len(toks)):
+                if timeRE.match(toks[i]):
+                    tIdx = i
+                if zRE.match(toks[i]):
+                    zIdx = i
+                if chRE.match(toks[i]):
+                    chIdx = i
+                if wellRE.match(toks[i]) and i < wellIndex:
+                    wellIndex = i
 
         minInfoIdx = min(tIdx, min(zIdx, chIdx))
         wellName = toks[wellIndex]
@@ -130,10 +145,22 @@ def main(cfg):
             wellDesc[toks[wellIndex]] = fileName[0:fileName.find(toks[minInfoIdx]) - 1]
         noZInFile[toks[wellIndex]] = zIdx == sys.maxint       
         noTInFile[toks[wellIndex]] = tIdx == sys.maxint
-        if not tIdx == sys.maxint:
-            timestep = int(toks[tIdx])
-            if wellName not in maxT or timestep > maxT[wellName]:
-                maxT[wellName] = timestep
+        if (cfg.getValue(ELMConfig.imgType) == "png") :
+            timestep = float(toks[tIdx])
+            if wellName not in pngTimesteps:
+                pngTimesteps[wellName] = set()
+            pngTimesteps[wellName].add(timestep)
+            maxT[wellName] = len(pngTimesteps[wellName])
+            
+            zSlice = float(toks[zIdx])
+            if wellName not in pngZSlices:
+                pngZSlices[wellName] = set()
+            pngZSlices[wellName].add(zSlice)
+            numZ[wellName] = len(pngZSlices[wellName])
+        elif not tIdx == sys.maxint:
+                timestep = int(toks[tIdx])
+                if wellName not in maxT or timestep > maxT[wellName]:
+                    maxT[wellName] = timestep
 
     uniqueNames = list(set(wellNames))
     ELMConfig.sort_nicely(uniqueNames)
@@ -175,6 +202,15 @@ def main(cfg):
         if wellName in maxT:
             cfg.setValue(ELMConfig.numT, maxT[wellName])
             
+        if (cfg.getValue(ELMConfig.imgType) == "png"):
+            zSlices = list(pngZSlices[wellName]);
+            zSlices.sort()
+            timesteps = list(pngTimesteps[wellName])
+            timesteps.sort()
+            cfg.setValue(ELMConfig.zList, zSlices)
+            cfg.setValue(ELMConfig.tList, timesteps)
+            cfg.setValue(ELMConfig.numZ, numZ[wellName])
+            
         cfg.setValue(ELMConfig.noZInFile, noZInFile[wellName] or cfg.getValue(ELMConfig.numZ) == 1)
         cfg.setValue(ELMConfig.noTInFile, noTInFile[wellName] or cfg.getValue(ELMConfig.numT) == 1)
 
@@ -209,14 +245,22 @@ def processDataset(cfg, datasetName, imgFiles):
     # Count how many images we have for each channel/Z slice
     imgFileCats = [[[[] for t in range(cfg.getValue(ELMConfig.numT))] for z in range(cfg.getValue(ELMConfig.numZ))] for c in range(cfg.getValue(ELMConfig.numChannels))]
     addedImages = False
-    for c in range(0, cfg.getValue(ELMConfig.numChannels)):
-        for z in range(0, cfg.getValue(ELMConfig.numZ)):
-            for t in range(0, cfg.getValue(ELMConfig.numT)):
-                for imgPath in imgFiles:
-                    fileName = os.path.basename(imgPath)
-                    if cfg.matchFilename(fileName, c, z, t):
-                        addedImages = True
-                        imgFileCats[c][z][t].append(fileName)
+    if cfg.params[ELMConfig.imgType] == "png":
+        for imgPath in imgFiles:
+            fileName = os.path.basename(imgPath)
+            z, t = cfg.getZTFromFilename(fileName)
+            for c in range(0, cfg.getValue(ELMConfig.numChannels)):
+                imgFileCats[c][z][t].append(fileName)
+                addedImages = True
+    else:
+        for c in range(0, cfg.getValue(ELMConfig.numChannels)):
+            for z in range(0, cfg.getValue(ELMConfig.numZ)):
+                for t in range(0, cfg.getValue(ELMConfig.numT)):
+                    for imgPath in imgFiles:
+                        fileName = os.path.basename(imgPath)
+                        if cfg.matchFilename(fileName, c, z, t):
+                            addedImages = True
+                            imgFileCats[c][z][t].append(fileName)
 
     # Check for no images
     if not addedImages:
@@ -229,14 +273,22 @@ def processDataset(cfg, datasetName, imgFiles):
         for z in range(0, cfg.getValue(ELMConfig.numZ)):
             for t in range(0, cfg.getValue(ELMConfig.numT)):
                 if not imgFileCats[c][z][t]:
+                    print "Error: skipping imgFileCat for (%d, %d, %d)" % {c, z, t}
                     continue;
                 
-                imSeq = VirtualStack(imgWidth, imgHeight, firstImage.getProcessor().getColorModel(), cfg.getValue(ELMConfig.inputDir))
-                for fileName in imgFileCats[c][z][t]:
-                    imSeq.addSlice(fileName);
-                images[c][z][t] = ImagePlus()
-                images[c][z][t].setStack(imSeq)
-                images[c][z][t].setTitle(datasetName + ", channel " + str(c) + ", z " + str(z) + ", " + str(t))
+                # Open PNGs differently, because we won't have individual channel images
+                if (cfg.getValue(ELMConfig.imgType) == "png") :
+                    if len(imgFileCats[c][z][t]) > 1:
+                        print "Error: multiple images per c,z,t combination!"
+                        return
+                    images[c][z][t] = os.path.join(cfg.getValue(ELMConfig.inputDir), imgFileCats[c][z][t][0])
+                else:
+                    imSeq = VirtualStack(imgWidth, imgHeight, firstImage.getProcessor().getColorModel(), cfg.getValue(ELMConfig.inputDir))
+                    for fileName in imgFileCats[c][z][t]:
+                        imSeq.addSlice(fileName);
+                    images[c][z][t] = ImagePlus()
+                    images[c][z][t].setStack(imSeq)
+                    images[c][z][t].setTitle(datasetName + ", channel " + str(c) + ", z " + str(z) + ", " + str(t))
     
     # Process images
     stats = processImages(cfg, datasetName, datasetPath, images)
@@ -337,7 +389,10 @@ def processImages(cfg, wellName, wellPath, images):
         # Set some config based upon channel
         if (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.BRIGHTFIELD):
             minCircularity = 0.001 # We want to identify one big cell ball, so ignore small less circular objects
-            minSize = 500
+            if cfg.params[ELMConfig.imgType] == "png":
+                minSize = 5;
+            else:
+                minSize = 500
         elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.BLUE) \
                 or (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.RED) \
                 or (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.GREEN): #
@@ -354,7 +409,22 @@ def processImages(cfg, wellName, wellPath, images):
             zStr = cfg.getZStr(z);
             for t in range(0, cfg.getValue(ELMConfig.numT)):
                 tStr = cfg.getTStr(t)
-                currIP = images[c][z][t];
+                if (cfg.getValue(ELMConfig.imgType) == "png"):
+                    # Brightfield uses the whole iamge
+                    if (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.BRIGHTFIELD):
+                        currIP = IJ.openImage(images[c][z][t])
+                    else: # otherwise, we'll plit off channels
+                        chanIdx = 2
+                        if (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.RED):
+                            chanIdx = 0
+                        elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.GREEN):
+                            chanIdx = 1;
+                        img = IJ.openImage(images[c][z][t])
+                        imgChanns = ChannelSplitter.split(img);
+                        img.close()
+                        currIP = imgChanns[chanIdx];
+                else:
+                    currIP = images[c][z][t];
                 resultsImage = currIP.duplicate()
                 dbgOutDesc = wellName + "_" + zStr + "_" + chanStr + "_" + tStr
                 if (cfg.getValue(ELMConfig.numT) > 1):
