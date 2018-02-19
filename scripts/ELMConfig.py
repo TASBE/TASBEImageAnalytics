@@ -37,6 +37,9 @@ def sort_nicely(l):
 cfgSection = "ImageJConfig"
 
 # PARAMS
+zList = "zList"
+tList = "tList"
+imgType = "imgType"
 elmSegPath = "elmSegPath"
 scopeProperties = "scopeProperties"
 numChannels = "numChannels"
@@ -76,6 +79,9 @@ class ConfigParams:
     #
     ### 
     def __init__(self):
+        self.params[pixelHeight] = 1
+        self.params[pixelWidth] = 1
+        self.params[imgType] = "tif"
         self.params[numChannels] = 4;
         self.params[numZ] = 1;
         self.params[numT] = 1;
@@ -134,6 +140,8 @@ class ConfigParams:
         print("Using Config:")
         paramKeys = sorted(self.params.keys())
         for key in paramKeys:
+            if key == zList or key == tList: # skip large config params
+                continue;
             if isinstance(self.params[key], list):
                 print("\t" + key + ":\t" + ", ".join(self.params[key]))
             elif isinstance(self.params[key], int) or isinstance(self.params[key], float):
@@ -146,7 +154,9 @@ class ConfigParams:
     #  Get the Z string in the filename, given the current Z and using the configs max num Z
     ###
     def getZStr(self, z):
-        if self.params[numZ] < 100:
+        if self.params[imgType] == "png":
+            return '%(depth)0.1f' % {"depth" : self.params[zList][z]}
+        elif self.params[numZ] < 100:
             return 'z%(depth)02d' % {"depth" : z};
         else:
             return 'z%(depth)03d' % {"depth" : z};
@@ -165,7 +175,9 @@ class ConfigParams:
     #  Get the T string in the filename, given the current T and using the configs max num T
     ###
     def getTStr(self, t):
-        if self.isCytation:
+        if self.params[imgType] == "png":
+            return '%(time)0.1f' % {"time" : self.params[tList][t]}
+        elif self.isCytation:
             if self.params[numT] < 100:
                 return '%(time)02d' % {"time" : t};
             else:
@@ -186,12 +198,20 @@ class ConfigParams:
         zStr = self.getZStr(z)
         tStr = self.getTStr(t)
         
+        fileToks = os.path.splitext(fileName)[0].split("_")
+        
+        if self.params[imgType] == "png":
+            cMatch = True
+            zMatch = zStr == fileToks[2]
+            tMatch = tStr == fileToks[3] 
+            return cMatch and zMatch and tMatch
+        
         cMatch = cStr in fileName
         zMatch = self.getValue(noZInFile) or zStr in fileName
         if self.isCytation:
             t = t + 1 # Cytation starts at a timestep of 1, so offset time indices
             tStr = self.getTStr(t) 
-            tMatch = self.getValue(noTInFile) or tStr == os.path.splitext(fileName)[0].split("_")[-1]
+            tMatch = self.getValue(noTInFile) or tStr == fileToks[-1]
         else:
             tMatch = self.getValue(noTInFile) or tStr in fileName
             
@@ -220,6 +240,11 @@ class ConfigParams:
                 self.params[inputDir] = cfgParser.get(cfgSection, option)
             elif option == elmSegPath.lower():
                 self.params[elmSegPath] = cfgParser.get(cfgSection, option)
+            elif option == imgType.lower():
+                inputImgType = cfgParser.get(cfgSection, option)
+                if not inputImgType == "tif" or not inputImgType == "png":
+                    print "Error: unsupported image type! Expected png or tif, received: " + inputImgType
+                self.params[imgType] = inputImgType
             elif option == outputDir.lower():
                 self.params[outputDir] = cfgParser.get(cfgSection, option)
             elif option == numChannels.lower():
@@ -281,6 +306,9 @@ class ConfigParams:
     def checkCytationMetadata(self, pathToImage):
         global RED, GREEN, BLUE, YELLOW 
         global BRIGHTFIELD
+
+        if self.params[imgType] == "png":
+            return
 
         cytationMetadata = TiffTags.getTag(pathToImage, CYTATION_METADATA_TIFF_TAG, 1)
         cytationMetadata = cytationMetadata[0:cytationMetadata.rfind('>') + 1]
