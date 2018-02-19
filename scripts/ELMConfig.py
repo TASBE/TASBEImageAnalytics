@@ -223,6 +223,19 @@ class ConfigParams:
 
 
     ###
+    #  Determine the c,z,t values from the filename for PNG images
+    ###
+    def getZTFromFilename(self, fileName):
+        if not self.params[imgType] == "png":
+            print "Error: calling getCZTFromFilename on non-PNG image!"
+            return
+        
+        fileToks = os.path.splitext(fileName)[0].split("_")
+        zVal = float(fileToks[pngZIdx])
+        tVal = float(fileToks[pngTIdx])
+        return self.params[zList].index(zVal), self.params[tList].index(tVal)
+        
+    ###
     #
     ###
     def loadConfig(self, cfgPath):
