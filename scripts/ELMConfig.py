@@ -246,7 +246,7 @@ class ConfigParams:
                 self.params[elmSegPath] = cfgParser.get(cfgSection, option)
             elif option == imgType.lower():
                 inputImgType = cfgParser.get(cfgSection, option)
-                if not inputImgType == "tif" or not inputImgType == "png":
+                if not inputImgType == "tif" and not inputImgType == "png":
                     print "Error: unsupported image type! Expected png or tif, received: " + inputImgType
                 self.params[imgType] = inputImgType
             elif option == outputDir.lower():
