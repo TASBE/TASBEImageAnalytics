@@ -13,9 +13,12 @@ Looking at NLS data
     Cell-stats                        [med]
 
 3D data
-    Tracking                          [high]
-    Cell-stats                        [med]
-    De-convolution                    [low]
+    Cell-stats                        [high]
+	point cloud -> refined cloud -> segment -> output components
+	debugging images
+	meshing to get surfaces on components
+    Tracking                          [med]
+    De-convolution                    Done, thresholding
 
 Pulling metadata from files
     pixel units —> um units           [Done]
