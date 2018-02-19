@@ -63,6 +63,10 @@ pcloudColorThresh = "pcloudColorThresh"
 pcloudExclusionX  = "pcloudExclusionX"
 pcloudExclusionY  = "pcloudExclusionY"
 
+pngWellIndex = 1
+pngZIdx = 2
+pngTIdx = 3
+
 CYTATION_METADATA_TIFF_TAG = 270
 
 ####
@@ -202,8 +206,8 @@ class ConfigParams:
         
         if self.params[imgType] == "png":
             cMatch = True
-            zMatch = zStr == fileToks[2]
-            tMatch = tStr == fileToks[3] 
+            zMatch = zStr == fileToks[pngZIdx]
+            tMatch = tStr == fileToks[pngTIdx] 
             return cMatch and zMatch and tMatch
         
         cMatch = cStr in fileName
