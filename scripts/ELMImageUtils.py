@@ -32,7 +32,10 @@ def getGrayScaleImage(currIP, c, z, t, chanName, cfg, wellPath, dbgOutDesc):
     
             toGray = ImageConverter(currIP)
             toGray.convertToGray8()
-            darkBackground = False
+            if cfg.params[ELMConfig.imgType] == "png":
+                darkBackground = True
+            else:
+                darkBackground = False
         elif (chanName == ELMConfig.BLUE) \
                 or (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.RED) \
                 or (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.GREEN): #
@@ -74,7 +77,10 @@ def getGrayScaleImage(currIP, c, z, t, chanName, cfg, wellPath, dbgOutDesc):
             return None
     elif imgType == ImagePlus.GRAY16 or imgType == ImagePlus.GRAY32 or imgType == ImagePlus.GRAY8:
         if (chanName == ELMConfig.BRIGHTFIELD):
-            darkBackground = False
+            if cfg.params[ELMConfig.imgType] == "png":
+                darkBackground = True
+            else:
+                darkBackground = False
             fillColor = Color(128,128,128)
         else:
             darkBackground = True
