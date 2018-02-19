@@ -70,8 +70,9 @@ def getGrayScaleImage(currIP, c, z, t, chanName, cfg, wellPath, dbgOutDesc):
             darkBackground = True
         else:
             print "ERROR: Unrecognized channel name! Name: " + chanName
-            return
-    elif imgType == ImagePlus.GRAY16 or imgType == ImagePlus.GRAY32:
+            currIP.close()
+            return None
+    elif imgType == ImagePlus.GRAY16 or imgType == ImagePlus.GRAY32 or imgType == ImagePlus.GRAY8:
         if (chanName == ELMConfig.BRIGHTFIELD):
             darkBackground = False
             fillColor = Color(128,128,128)
@@ -83,8 +84,13 @@ def getGrayScaleImage(currIP, c, z, t, chanName, cfg, wellPath, dbgOutDesc):
         imgProc.setColor(fillColor)
         imgProc.fillRect(roiX, roiY, currIP.getWidth(), currIP.getHeight())
         
-        toGray = ImageConverter(currIP)
-        toGray.convertToGray8()
+        if not imgType == ImagePlus.GRAY8: 
+            toGray = ImageConverter(currIP)
+            toGray.convertToGray8()
+    else:
+        print "ERROR: Unrecognized channel name & image type! Channel: " + chanName + ", imgType: " + str(imgType)
+        currIP.close()
+        return None
 
     WindowManager.setTempCurrentImage(currIP);
 
