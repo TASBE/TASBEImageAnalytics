@@ -55,7 +55,7 @@ def getCSVHeader(cfg):
     for chan in cfg.getValue(ELMConfig.chanLabel):
         if not chan == ELMConfig.SKIP and not chan == ELMConfig.BRIGHTFIELD:
             outputChans.append(chan)
-    headerString = "well, brightfield area (um^2), "
+    headerString = "well, z, t, brightfield area (um^2), "
     for chan in outputChans:
         headerString += chan + " area (um^2), "
         headerString += "percent " + chan + ", " 
@@ -168,10 +168,10 @@ def main(cfg):
     # Try to determine pixel size from Leica properties
     metadataDir = os.path.join(cfg.getValue(ELMConfig.inputDir), "MetaData")
     metadataExists = True
-    if not os.path.exists(metadataDir) or not cfg.isCytation:
+    if not os.path.exists(metadataDir) and not cfg.isCytation and not (cfg.getValue(ELMConfig.imgType) == "png"):
         print "No MetaData directory in input dir! Can't read Leica properties!"
         metadataExists = False;
-    elif cfg.isCytation:
+    elif cfg.isCytation or (cfg.getValue(ELMConfig.imgType) == "png"):
         metadataExists = False;
 
     # Process each well
@@ -217,7 +217,7 @@ def main(cfg):
         print ("Beginning well " + wellName + "...")
         cfg.printCfg()
         start = time.time()
-        dsResults.append(wellName + ", " + processDataset(cfg, wellName, dsImgFiles))
+        dsResults.append(processDataset(cfg, wellName, dsImgFiles))
         end = time.time()
         print("Processed well " + wellName + " in " + str(end - start) + " s")
         print("\n\n")
@@ -293,17 +293,20 @@ def processDataset(cfg, datasetName, imgFiles):
     # Process images
     stats = processImages(cfg, datasetName, datasetPath, images)
 
+    outputChans = [];
+    for chan in cfg.getValue(ELMConfig.chanLabel):
+        if not chan == ELMConfig.SKIP and not chan == ELMConfig.BRIGHTFIELD:
+            outputChans.append(chan)
+
     # Output Results
-    resultsFile = open(os.path.join(datasetPath, datasetName + "_results.csv"), "w")
+    resultsFile = open(os.path.join(cfg.getValue(ELMConfig.outputDir), datasetName + "_results.csv"), "w")
     resultsFile.write(getCSVHeader(cfg));
-    channelAreas = dict()
-    channelAreas["totalArea"] = 0
-    for c in range(0, cfg.getValue(ELMConfig.numChannels)):
-        for z in range(0, cfg.getValue(ELMConfig.numZ)):
-            for t in range(0, cfg.getValue(ELMConfig.numT)):
-                chanStr = '_' + cfg.getCStr(c)
-                zStr = '_' + cfg.getZStr(z)
-                tStr = '_' + cfg.getTStr(t)
+    resultsString = ""
+    for z in range(0, cfg.getValue(ELMConfig.numZ)):
+        for t in range(0, cfg.getValue(ELMConfig.numT)):
+            channelAreas = dict()
+            channelAreas["totalArea"] = 0
+            for c in range(0, cfg.getValue(ELMConfig.numChannels)):
                 area = 0;
                 writeStats = False
                 # Handle brigthfield channel
@@ -317,7 +320,7 @@ def processDataset(cfg, datasetName, imgFiles):
                         channelAreas["totalArea"] = area
                     else:
                         channelAreas["totalArea"] = channelAreas["totalArea"] + area
-                # Handle Fluorscent Channels   
+                # Handle Fluorescent Channels   
                 elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.BLUE) \
                         or (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.RED) \
                         or (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.GREEN) \
@@ -336,6 +339,9 @@ def processDataset(cfg, datasetName, imgFiles):
                     continue
                 # Write out individual areas per channel
                 if writeStats:
+                    chanStr = '_' + cfg.getCStr(c)
+                    zStr = '_' + cfg.getZStr(z)
+                    tStr = '_' + cfg.getTStr(t)
                     chanResultsFile = open(os.path.join(datasetPath, datasetName + chanStr + zStr + tStr + "_stats.csv"), "w")
                     numParticles = len(stats[c][z][t][ELMConfig.UM_AREA])
                     # Writer Header
@@ -353,22 +359,21 @@ def processDataset(cfg, datasetName, imgFiles):
                         chanResultsFile.write(line);
                     chanResultsFile.close()
 
-    if channelAreas["totalArea"] == 0:
-        channelAreas["totalArea"] = 0.000000001
+            if channelAreas["totalArea"] == 0:
+                channelAreas["totalArea"] = 0.000000001
 
-    outputChans = [];
-    for chan in cfg.getValue(ELMConfig.chanLabel):
-        if not chan == ELMConfig.SKIP and not chan == ELMConfig.BRIGHTFIELD:
-            outputChans.append(chan)
+            zStr = cfg.getZStr(z)
+            tStr = cfg.getTStr(t)
+            resultsString += datasetName + ", " + zStr + ", " + tStr + ", "
+            resultsString += "\t\t\t %10.4f," % (channelAreas["totalArea"])
+            numChans = len(outputChans)
+            for i in range(0, numChans):
+                resultsString += "\t\t %10.4f," % channelAreas[outputChans[i]]
+                resultsString += "\t\t %0.4f" % (channelAreas[outputChans[i]] /  channelAreas["totalArea"])
+                if (i + 1 < numChans):
+                    resultsString += ","
+            resultsString += "\n"
 
-    resultsString = "\t\t\t %10.4f," % (channelAreas["totalArea"])
-    numChans = len(outputChans)
-    for i in range(0, numChans):
-        resultsString += "\t\t %10.4f," % channelAreas[outputChans[i]]
-        resultsString += "\t\t %0.4f" % (channelAreas[outputChans[i]] /  channelAreas["totalArea"])
-        if (i + 1 < numChans) :
-            resultsString += ","
-    resultsString += "\n"   
     resultsFile.write(resultsString)
     resultsFile.close()
     return resultsString
