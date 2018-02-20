@@ -1,5 +1,5 @@
 from ij import IJ, ImagePlus, VirtualStack, WindowManager
-from ij.process import ColorProcessor
+from ij.process import ImageConverter
 from ij.measure import ResultsTable
 
 from ij.plugin import ChannelSplitter
@@ -474,7 +474,12 @@ def processImages(cfg, wellName, wellPath, images):
 
                 width = currIP.getWidth();
                 height = currIP.getHeight();
-                overlayProcessor = ColorProcessor(width, height)
+                overlayImage = resultsImage.duplicate()
+                overlayImage.setTitle("Overlay_" + dbgOutDesc + "_particles")
+                if not overlayImage.getType() == ImagePlus.COLOR_RGB:
+                    imgConvert = ImageConverter(overlayImage)
+                    imgConvert.convertToRGB() 
+                overlayProcessor = overlayImage.getProcessor()
                 currProcessor = currIP.getProcessor()
 
                 if (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.BRIGHTFIELD):
@@ -488,14 +493,11 @@ def processImages(cfg, wellName, wellPath, images):
                 elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.BLUE):
                     maskColor = 0x00ffff00
 
-                for x in range(0, width) :
-                    for y in range(0,height) :
+                for x in range(0, width):
+                    for y in range(0,height):
                         currPix = currProcessor.getPixel(x,y);
-                        if currPix == 0x00000000:
-                            overlayProcessor.putPixel(x, y, resultsImage.getProcessor().getPixel(x,y))
-                        else:
+                        if not currPix == 0x00000000:
                             overlayProcessor.putPixel(x, y, maskColor)
-                overlayImage = ImagePlus("Overlay_" + dbgOutDesc + "_particles", overlayProcessor)
                 WindowManager.setTempCurrentImage(overlayImage);
                 IJ.saveAs('png', os.path.join(outputPath, "Overlay_" + dbgOutDesc + "_particles.png"))
 
