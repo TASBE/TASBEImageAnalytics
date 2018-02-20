@@ -385,22 +385,7 @@ class ConfigParams:
          
         self.params[chanLabel] = []
         for ch in chanNames:
-            if ch in self.params[chansToSkip]:
-                self.params[chanLabel].append(SKIP)
-            else:
-                self.params[chanLabel].append(ch)
-
-
-    ####
-    #
-    # Replace any channel labels with skip, if necessary
-    #
-    ####    
-    def checkSkipChans(self):
-        for skipChan in self.params[chansToSkip]:
-            for i in range(0, len(self.params[chanLabel])):
-                if skipChan == self.params[chanLabel][i]:
-                    self.params[chanLabel][i] = SKIP
+            self.params[chanLabel].append(ch)
 
 
     ####
@@ -420,10 +405,7 @@ class ConfigParams:
         chanNames = []
         for chan in chanEle.getchildren():
             newChan = chan.get("LUTName")
-            if newChan in self.params[chansToSkip]:
-                chanNames.append(SKIP)
-            else:
-                chanNames.append(chan.get("LUTName"))
+            chanNames.append(chan.get("LUTName"))
         self.params[chanLabel] = chanNames
 
         # Pull dimension info from XML 

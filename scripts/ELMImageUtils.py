@@ -20,7 +20,7 @@ def getGrayScaleImage(currIP, c, z, t, chanName, cfg, wellPath, dbgOutDesc):
         roiY = currIP.getHeight()
     
     imgType = currIP.getType()
-    if (chanName == ELMConfig.SKIP): # Don't process skip channels
+    if (chanName in cfg.getValue(ELMConfig.chansToSkip)): # Don't process skip channels
         currIP.close()
         return None
     elif imgType == ImagePlus.COLOR_RGB or imgType == ImagePlus.COLOR_256:

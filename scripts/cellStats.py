@@ -53,7 +53,7 @@ def printUsage():
 def getCSVHeader(cfg):
     outputChans = [];
     for chan in cfg.getValue(ELMConfig.chanLabel):
-        if not chan == ELMConfig.SKIP and not chan == ELMConfig.BRIGHTFIELD:
+        if not chan in cfg.getValue(ELMConfig.chansToSkip) and not chan == ELMConfig.BRIGHTFIELD:
             outputChans.append(chan)
     headerString = "well, z, t, brightfield area (um^2), "
     for chan in outputChans:
@@ -88,11 +88,6 @@ def main(cfg):
     if cfg.isCytation:
         if not cfg.hasValue(ELMConfig.chanLabel):
             cfg.getCytationChanNames(imgFiles)
-        else:
-            cfg.checkSkipChans()
-    
-    if cfg.params[ELMConfig.imgType] == "png":
-        cfg.checkSkipChans()
 
     # Get the names of all wells that exist in this dataset/plate
     wellNames = []
@@ -273,7 +268,7 @@ def processDataset(cfg, datasetName, imgFiles):
         for z in range(0, cfg.getValue(ELMConfig.numZ)):
             for t in range(0, cfg.getValue(ELMConfig.numT)):
                 if not imgFileCats[c][z][t]:
-                    print "Error: skipping imgFileCat for (%d, %d, %d)" % {c, z, t}
+                    print "Error: skipping imgFileCat for (%d, %d, %d)" % (c, z, t)
                     continue;
                 
                 # Open PNGs differently, because we won't have individual channel images
@@ -295,7 +290,7 @@ def processDataset(cfg, datasetName, imgFiles):
 
     outputChans = [];
     for chan in cfg.getValue(ELMConfig.chanLabel):
-        if not chan == ELMConfig.SKIP and not chan == ELMConfig.BRIGHTFIELD:
+        if not chan in cfg.params[ELMConfig.chansToSkip] and not chan == ELMConfig.BRIGHTFIELD:
             outputChans.append(chan)
 
     # Output Results
@@ -309,8 +304,11 @@ def processDataset(cfg, datasetName, imgFiles):
             for c in range(0, cfg.getValue(ELMConfig.numChannels)):
                 area = 0;
                 writeStats = False
-                # Handle brigthfield channel
-                if (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.BRIGHTFIELD):
+                # Skip channel
+                if (cfg.getValue(ELMConfig.chanLabel)[c] in cfg.params[ELMConfig.chansToSkip]):
+                    continue
+                # Handle brightfield channel
+                elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.BRIGHTFIELD):
                     if not stats[c][z][t][ELMConfig.UM_AREA] :
                         area = 0;
                     else:
@@ -334,9 +332,9 @@ def processDataset(cfg, datasetName, imgFiles):
                         channelAreas[cfg.getValue(ELMConfig.chanLabel)[c]] = area
                     else:
                         channelAreas[cfg.getValue(ELMConfig.chanLabel)[c]] = channelAreas[cfg.getValue(ELMConfig.chanLabel)[c]] + area
-                # Skip channel
-                elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.SKIP):
-                    continue
+                else:
+                    print "ERROR! Unknown channel!"
+                    quit(1)
                 # Write out individual areas per channel
                 if writeStats:
                     chanStr = '_' + cfg.getCStr(c)
@@ -392,6 +390,8 @@ def processImages(cfg, wellName, wellPath, images):
         chanName = cfg.getValue(ELMConfig.chanLabel)[c]
 
         # Set some config based upon channel
+        if (cfg.getValue(ELMConfig.chanLabel)[c] in cfg.getValue(ELMConfig.chansToSkip)):
+            continue
         if (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.BRIGHTFIELD):
             minCircularity = 0.001 # We want to identify one big cell ball, so ignore small less circular objects
             if cfg.params[ELMConfig.imgType] == "png":
@@ -406,8 +406,6 @@ def processImages(cfg, wellName, wellPath, images):
         elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.YELLOW):
             minCircularity = 0.001
             minSize = 5
-        elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.SKIP):
-            continue
 
         # Process images in Z stack
         for z in range(0, cfg.getValue(ELMConfig.numZ)):

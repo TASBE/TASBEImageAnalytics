@@ -163,7 +163,7 @@ def processDataset(cfg, datasetName, imgFiles):
 
     # Process all images
     for c in range(0, cfg.getValue(ELMConfig.numChannels)):
-        if (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.SKIP):
+        if (cfg.getValue(ELMConfig.chanLabel)[c] in cfg.getValue(ELMConfig.chansToSkip)):
             continue;
         processImages(cfg, datasetName, datasetPath, c, imgFileCats[c])
 
