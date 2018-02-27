@@ -65,6 +65,10 @@ debugOutput = "debugOutput"
 pcloudColorThresh = "pcloudColorThresh"
 pcloudExclusionX  = "pcloudExclusionX"
 pcloudExclusionY  = "pcloudExclusionY"
+lowerRightExclusionX  = "lowerRightExclusionX"
+lowerRightExclusionY  = "lowerRightExclusionY"
+upperLeftExclusionX  = "upperLeftExclusionX"
+upperLeftExclusionY  = "upperLeftExclusionY"
 
 pngWellIndex = 1
 pngZIdx = 2
@@ -310,10 +314,14 @@ class ConfigParams:
                 self.params[numT] = int(cfgParser.get(cfgSection, option))
             elif option == pcloudColorThresh.lower():
                 self.params[pcloudColorThresh] = int(cfgParser.get(cfgSection, option))
-            elif option == pcloudExclusionX.lower():
-                self.params[pcloudExclusionX] = int(cfgParser.get(cfgSection, option))
-            elif option == pcloudExclusionY.lower():
-                self.params[pcloudExclusionY] = int(cfgParser.get(cfgSection, option))
+            elif option == pcloudExclusionX.lower() or option == lowerRightExclusionX.lower():
+                self.params[lowerRightExclusionX] = int(cfgParser.get(cfgSection, option))
+            elif option == pcloudExclusionY.lower() or option == lowerRightExclusionY.lower():
+                self.params[lowerRightExclusionY] = int(cfgParser.get(cfgSection, option))
+            elif option == upperLeftExclusionX.lower():
+                self.params[upperLeftExclusionX] = int(cfgParser.get(cfgSection, option))
+            elif option == upperLeftExclusionY.lower():
+                self.params[upperLeftExclusionY] = int(cfgParser.get(cfgSection, option))
             elif option == noZInFile.lower():
                 self.params[noZInFile]  = cfgParser.get(cfgSection, option) == "True"
             elif option == noTInFile.lower():
