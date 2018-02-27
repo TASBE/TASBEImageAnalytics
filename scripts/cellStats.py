@@ -245,61 +245,27 @@ def main(cfg):
 ####
 def processDataset(cfg, datasetName, imgFiles):
     datasetPath = os.path.join(cfg.getValue(ELMConfig.outputDir), datasetName)
-    
-    firstImage = IJ.openImage(imgFiles[0]);
-    imgWidth = firstImage.getWidth();
-    imgHeight = firstImage.getHeight();
 
     # Count how many images we have for each channel/Z slice
     imgFileCats = [[[[] for t in range(cfg.getValue(ELMConfig.numT))] for z in range(cfg.getValue(ELMConfig.numZ))] for c in range(cfg.getValue(ELMConfig.numChannels))]
-    addedImages = False
     if cfg.params[ELMConfig.imgType] == "png":
         for imgPath in imgFiles:
             fileName = os.path.basename(imgPath)
             z, t = cfg.getZTFromFilename(fileName)
             for c in range(0, cfg.getValue(ELMConfig.numChannels)):
-                imgFileCats[c][z][t].append(fileName)
-                addedImages = True
+                imgFileCats[c][z][t].append(imgPath)
+                if (len(imgFileCats[c][z][t]) > 1):
+                    print "ERROR: More than one image for c,z,t: " + str(c) + ", " + str(z) + ", "+ str(t)
     else:
-        for c in range(0, cfg.getValue(ELMConfig.numChannels)):
-            for z in range(0, cfg.getValue(ELMConfig.numZ)):
-                for t in range(0, cfg.getValue(ELMConfig.numT)):
-                    for imgPath in imgFiles:
-                        fileName = os.path.basename(imgPath)
-                        if cfg.matchFilename(fileName, c, z, t):
-                            addedImages = True
-                            imgFileCats[c][z][t].append(fileName)
+        for imgPath in imgFiles:
+            fileName = os.path.basename(imgPath)
+            c,z,t = cfg.getCZTFromFilename(fileName)
+            imgFileCats[c][z][t].append(imgPath)
+            if (len(imgFileCats[c][z][t]) > 1):
+                print "ERROR: More than one image for c,z,t: " + str(c) + ", " + str(z) + ", "+ str(t)
 
-    # Check for no images
-    if not addedImages:
-        print "Failed to add any images to chan/z categories! Problem with input dir?"
-        quit(1)
-
-    # Load all images
-    images = [[[[] for t in range(cfg.getValue(ELMConfig.numT))] for z in range(cfg.getValue(ELMConfig.numZ))] for c in range(cfg.getValue(ELMConfig.numChannels))]
-    for c in range(0, cfg.getValue(ELMConfig.numChannels)):
-        for z in range(0, cfg.getValue(ELMConfig.numZ)):
-            for t in range(0, cfg.getValue(ELMConfig.numT)):
-                if not imgFileCats[c][z][t]:
-                    print "Error: skipping imgFileCat for (%d, %d, %d)" % (c, z, t)
-                    continue;
-                
-                # Open PNGs differently, because we won't have individual channel images
-                if (cfg.getValue(ELMConfig.imgType) == "png") :
-                    if len(imgFileCats[c][z][t]) > 1:
-                        print "Error: multiple images per c,z,t combination!"
-                        return
-                    images[c][z][t] = os.path.join(cfg.getValue(ELMConfig.inputDir), imgFileCats[c][z][t][0])
-                else:
-                    imSeq = VirtualStack(imgWidth, imgHeight, firstImage.getProcessor().getColorModel(), cfg.getValue(ELMConfig.inputDir))
-                    for fileName in imgFileCats[c][z][t]:
-                        imSeq.addSlice(fileName);
-                    images[c][z][t] = ImagePlus()
-                    images[c][z][t].setStack(imSeq)
-                    images[c][z][t].setTitle(datasetName + ", channel " + str(c) + ", z " + str(z) + ", " + str(t))
-    
     # Process images
-    stats = processImages(cfg, datasetName, datasetPath, images)
+    stats = processImages(cfg, datasetName, datasetPath, imgFileCats)
 
     outputChans = [];
     for chan in cfg.getValue(ELMConfig.chanLabel):
@@ -430,19 +396,19 @@ def processImages(cfg, wellName, wellPath, images):
                 if (cfg.getValue(ELMConfig.imgType) == "png"):
                     # Brightfield uses the whole iamge
                     if (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.BRIGHTFIELD):
-                        currIP = IJ.openImage(images[c][z][t])
+                        currIP = IJ.openImage(images[c][z][t][0])
                     else: # otherwise, we'll plit off channels
                         chanIdx = 2
                         if (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.RED):
                             chanIdx = 0
                         elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.GREEN):
                             chanIdx = 1;
-                        img = IJ.openImage(images[c][z][t])
+                        img = IJ.openImage(images[c][z][t][0])
                         imgChanns = ChannelSplitter.split(img);
                         img.close()
                         currIP = imgChanns[chanIdx];
                 else:
-                    currIP = images[c][z][t];
+                    currIP = IJ.openImage(images[c][z][t][0])
                 resultsImage = currIP.duplicate()
                 dbgOutDesc = wellName + "_" + zStr + "_" + chanStr + "_" + tStr
                 if (cfg.getValue(ELMConfig.numT) > 1):
