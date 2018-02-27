@@ -440,13 +440,16 @@ class ConfigParams:
         self.params[numChannels] = len(chanEle.getchildren())
         chanNames = []
         for chan in chanEle.getchildren():
-            newChan = chan.get("LUTName")
             chanNames.append(chan.get("LUTName"))
         self.params[chanLabel] = chanNames
 
         # Pull dimension info from XML 
         dimsEle = imgDescEle.find("Dimensions")
         for dimEle in dimsEle.getchildren():
+            dimId = dimEle.get("DimID")
+            # Ignore the time dimension; we don't need to do anything with it
+            if dimId == 'T':
+                continue;
             numElementsInDim = int(dimEle.get("NumberOfElements"))
             dimLength = float(dimEle.get("Length"))
             dimUnit = dimEle.get("Unit")
