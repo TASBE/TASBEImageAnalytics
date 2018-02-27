@@ -98,6 +98,7 @@ def main(cfg):
     noZInFile = dict()
     noTInFile = dict()
     maxT = dict()
+    minT = dict()
     numZ = dict()
     pngTimesteps = dict()
     pngZSlices = dict()
@@ -155,9 +156,19 @@ def main(cfg):
             pngZSlices[wellName].add(zSlice)
             numZ[wellName] = len(pngZSlices[wellName])
         elif not tIdx == sys.maxint:
-                timestep = int(toks[tIdx])
-                if wellName not in maxT or timestep > maxT[wellName]:
-                    maxT[wellName] = timestep
+            cfg.setValue(ELMConfig.tIdx, tIdx)
+            timeTok = toks[tIdx]
+            if 't' in timeTok:
+                timeTok = timeTok.replace('t','')
+            timestep = int(timeTok)
+            if wellName not in maxT or timestep > maxT[wellName]:
+                maxT[wellName] = timestep
+            if wellName not in minT or timestep < minT[wellName]:
+                minT[wellName] = timestep
+        if not chIdx == sys.maxint:
+            cfg.setValue(ELMConfig.cIdx, chIdx)
+        if not zIdx == sys.maxint:
+            cfg.setValue(ELMConfig.zIdx, zIdx)
 
     uniqueNames = list(set(wellNames))
     ELMConfig.sort_nicely(uniqueNames)
@@ -197,7 +208,7 @@ def main(cfg):
             cfg.updateCfgWithXML(xmlFile)
 
         if wellName in maxT:
-            cfg.setValue(ELMConfig.numT, maxT[wellName])
+            cfg.setValue(ELMConfig.numT, maxT[wellName] - minT[wellName] + 1)
             
         if (cfg.getValue(ELMConfig.imgType) == "png"):
             zSlices = list(pngZSlices[wellName]);
