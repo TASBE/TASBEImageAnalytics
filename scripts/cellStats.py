@@ -57,8 +57,9 @@ def getCSVHeader(cfg):
             outputChans.append(chan)
     headerString = "well, z, t, brightfield area (um^2), "
     for chan in outputChans:
+        headerString += chan + " num clusters, "
         headerString += chan + " area (um^2), "
-        headerString += "percent " + chan + ", " 
+        headerString += "percent " + chan + ", "
     headerString += "classification \n"
     return headerString
 
@@ -366,6 +367,8 @@ def processDataset(cfg, datasetName, imgFiles):
             resultsString += "\t\t\t %10.4f," % (channelAreas["totalArea"])
             numChans = len(outputChans)
             for i in range(0, numChans):
+                numParticles = len(stats[i][z][t][ELMConfig.UM_AREA])
+                resultsString += "\t\t %d," % numParticles
                 resultsString += "\t\t %10.4f," % channelAreas[outputChans[i]]
                 resultsString += "\t\t %0.4f" % (channelAreas[outputChans[i]] /  channelAreas["totalArea"])
                 if (i + 1 < numChans):
