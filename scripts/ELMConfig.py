@@ -37,6 +37,9 @@ def sort_nicely(l):
 cfgSection = "ImageJConfig"
 
 # PARAMS
+cIdx = "cIdx"
+zIdx = "zIdx"
+tIdx = "tIdx"
 zList = "zList"
 tList = "tList"
 imgType = "imgType"
@@ -223,7 +226,7 @@ class ConfigParams:
 
 
     ###
-    #  Determine the c,z,t values from the filename for PNG images
+    #  Determine the z,t values from the filename for PNG images
     ###
     def getZTFromFilename(self, fileName):
         if not self.params[imgType] == "png":
@@ -234,7 +237,40 @@ class ConfigParams:
         zVal = float(fileToks[pngZIdx])
         tVal = float(fileToks[pngTIdx])
         return self.params[zList].index(zVal), self.params[tList].index(tVal)
-        
+    
+    ###
+    #  Determine the c,z,t values from the filename for PNG images
+    ###
+    def getCZTFromFilename(self, fileName):
+        if not self.hasValue(cIdx):
+            print "Error: calling getCZTFromFilename with no defiend cIdx!"
+            return;
+        if not self.params[noZInFile] and not self.hasValue(zIdx):
+            print "Error: calling getCZTFromFilename with no defiend zIdx!"
+            return;
+        if not self.params[noZInFile] and not self.hasValue(tIdx):
+            print "Error: calling getCZTFromFilename with no defiend tIdx!"
+            return;
+
+        fileToks = os.path.splitext(fileName)[0].split("_")
+        cStr = fileToks[self.params[cIdx]]
+        chan = int(cStr.replace('ch',''))
+
+        if zIdx not in self.params:
+            z = 0
+        else:
+            zStr = fileToks[self.params[zIdx]]
+            z = int(zStr.replace('z',''))
+
+        if tIdx not in self.params:
+            t = 0;
+        else:
+            tStr = fileToks[self.params[tIdx]]
+            t = int(tStr.replace('t',''))
+        return chan, z, t
+
+
+
     ###
     #
     ###
