@@ -362,11 +362,14 @@ class ConfigParams:
 
         if self.params[imgType] == "png":
             return
-
+        
+        print "Checking Cytation!"
+        
         cytationMetadata = TiffTags.getTag(pathToImage, CYTATION_METADATA_TIFF_TAG, 1)
         cytationMetadata = cytationMetadata[0:cytationMetadata.rfind('>') + 1]
         # Check that we have metdata
         if not cytationMetadata:
+            print "Found no metadata!"
             return
         xmlRoot = ElementTree.fromstring(cytationMetadata)
         imgAcq = xmlRoot.find("ImageAcquisition")
@@ -374,9 +377,12 @@ class ConfigParams:
 
         # if we don't have the right XML elements, maybe not Cytation
         if imgAcq is None or imgRef is None:
+            print "Found wrong metadata!"
             return
         
         self.isCytation = True
+        
+        print "Found Cytation!"
         
         # Need to alter channel names, as the Cytation uses different names
         GREEN = "GFP"
