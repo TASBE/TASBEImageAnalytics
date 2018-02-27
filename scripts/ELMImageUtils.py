@@ -10,14 +10,25 @@ import ELMConfig
 
 
 def getGrayScaleImage(currIP, c, z, t, chanName, cfg, wellPath, dbgOutDesc):
-    if (cfg.hasValue(ELMConfig.pcloudExclusionX)):
-        roiX = cfg.getValue(ELMConfig.pcloudExclusionX)
+    if (cfg.hasValue(ELMConfig.upperLeftExclusionX)):
+        ulExclusionX = cfg.getValue(ELMConfig.upperLeftExclusionX)
     else:
-        roiX = currIP.getWidth()
-    if (cfg.hasValue(ELMConfig.pcloudExclusionY)):
-        roiY = cfg.getValue(ELMConfig.pcloudExclusionY)
+        ulExclusionX = 0
+
+    if (cfg.hasValue(ELMConfig.upperLeftExclusionY)):
+        ulExclusionY = cfg.getValue(ELMConfig.upperLeftExclusionY)
     else:
-        roiY = currIP.getHeight()
+        ulExclusionY = 0
+
+    if (cfg.hasValue(ELMConfig.lowerRightExclusionX)):
+        lrExclusionX = cfg.getValue(ELMConfig.lowerRightExclusionX)
+    else:
+        lrExclusionX = currIP.getWidth()
+
+    if (cfg.hasValue(ELMConfig.lowerRightExclusionY)):
+        lrExclusionY = cfg.getValue(ELMConfig.lowerRightExclusionY)
+    else:
+        lrExclusionY = currIP.getHeight()
     
     imgType = currIP.getType()
     if (chanName in cfg.getValue(ELMConfig.chansToSkip)): # Don't process skip channels
@@ -28,7 +39,8 @@ def getGrayScaleImage(currIP, c, z, t, chanName, cfg, wellPath, dbgOutDesc):
             # Clear the Exclusion zone, so it doesn't mess with  thresholding
             imgProc = currIP.getProcessor();
             imgProc.setColor(Color(128,128,128))
-            imgProc.fillRect(roiX, roiY, currIP.getWidth(), currIP.getHeight())
+            imgProc.fillRect(lrExclusionX, lrExclusionY, currIP.getWidth(), currIP.getHeight())
+            imgProc.fillRect(0, 0, ulExclusionX, ulExclusionY)
     
             toGray = ImageConverter(currIP)
             toGray.convertToGray8()
@@ -51,13 +63,15 @@ def getGrayScaleImage(currIP, c, z, t, chanName, cfg, wellPath, dbgOutDesc):
             # Clear the Exclusion zone, so it doesn't mess with  thresholding
             imgProc = currIP.getProcessor();
             imgProc.setColor(Color(0,0,0))
-            imgProc.fillRect(roiX, roiY, currIP.getWidth(), currIP.getHeight())
+            imgProc.fillRect(lrExclusionX, lrExclusionY, currIP.getWidth(), currIP.getHeight())
+            imgProc.fillRect(0, 0, ulExclusionX, ulExclusionY)
             darkBackground = True
         elif (chanName == ELMConfig.YELLOW):
             # Clear the Exclusion zone, so it doesn't mess with  thresholding
             imgProc = currIP.getProcessor();
             imgProc.setColor(Color(0,0,0))
-            imgProc.fillRect(roiX, roiY, currIP.getWidth(), currIP.getHeight())
+            imgProc.fillRect(lrExclusionX, lrExclusionY, currIP.getWidth(), currIP.getHeight())
+            imgProc.fillRect(0, 0, ulExclusionX, ulExclusionY)
     
             # Create a new image that consists of the average of the red & green channels
             title = currIP.getTitle()
@@ -88,7 +102,8 @@ def getGrayScaleImage(currIP, c, z, t, chanName, cfg, wellPath, dbgOutDesc):
         # Clear the Exclusion zone, so it doesn't mess with  thresholding
         imgProc = currIP.getProcessor();
         imgProc.setColor(fillColor)
-        imgProc.fillRect(roiX, roiY, currIP.getWidth(), currIP.getHeight())
+        imgProc.fillRect(lrExclusionX, lrExclusionY, currIP.getWidth(), currIP.getHeight())
+        imgProc.fillRect(0, 0, ulExclusionX, ulExclusionY)
         
         if not imgType == ImagePlus.GRAY8: 
             toGray = ImageConverter(currIP)
