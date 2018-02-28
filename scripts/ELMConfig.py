@@ -37,6 +37,7 @@ def sort_nicely(l):
 cfgSection = "ImageJConfig"
 
 # PARAMS
+wellIdx = "wellIdx"
 cIdx = "cIdx"
 zIdx = "zIdx"
 tIdx = "tIdx"
@@ -300,6 +301,15 @@ class ConfigParams:
                 self.params[inputDir] = cfgParser.get(cfgSection, option)
             elif option == elmSegPath.lower():
                 self.params[elmSegPath] = cfgParser.get(cfgSection, option)
+            elif option == wellIdx.lower():
+                val = cfgParser.get(cfgSection,option)
+                if ',' in val:
+                    toks = cfgParser.get(cfgSection, option).split(",")
+                    self.params[wellIdx] = []
+                    for tok in toks:
+                        self.params[wellIdx].append(int(tok))
+                else:
+                    self.params[wellIdx] = int(val)
             elif option == imgType.lower():
                 inputImgType = cfgParser.get(cfgSection, option)
                 if not inputImgType == "tif" and not inputImgType == "png":
