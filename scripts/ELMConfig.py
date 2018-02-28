@@ -258,7 +258,10 @@ class ConfigParams:
 
         fileToks = os.path.splitext(fileName)[0].split("_")
         cStr = fileToks[self.params[cIdx]]
-        chan = int(cStr.replace('ch',''))
+        try:
+            chan = int(cStr.replace('ch',''))
+        except:
+            chan = self.getValue(chanLabel).index(cStr)
 
         if zIdx not in self.params:
             z = 0
