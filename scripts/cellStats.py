@@ -139,7 +139,7 @@ def main(cfg):
                     tIdx = i
                 if zRE.match(toks[i]):
                     zIdx = i
-                if chRE.match(toks[i]):
+                if chRE.match(toks[i]) or toks[i] in cfg.getValue(ELMConfig.chanLabel):
                     chIdx = i
                 if not cfg.hasValue(ELMConfig.wellIdx) and (wellRE.match(toks[i]) or posRE.match(toks[i])) and i < wellIndex:
                     wellIndex = i
