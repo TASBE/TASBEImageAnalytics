@@ -278,6 +278,8 @@ class ConfigParams:
         else:
             tStr = fileToks[self.params[tIdx]]
             t = int(tStr.replace('t',''))
+            if self.isCytation:
+                t -= 1
         return chan, z, t
 
 
