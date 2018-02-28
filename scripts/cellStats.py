@@ -1,4 +1,4 @@
-from ij import IJ, ImagePlus, VirtualStack, WindowManager
+from ij import IJ, ImagePlus, WindowManager
 from ij.process import ImageConverter
 from ij.measure import ResultsTable
 
@@ -23,10 +23,12 @@ def printUsage():
     global numChannels;
     global numZ;
     
-    print "This script will read tif files from an input directory and compute statistics on the cell images."
+    print "This script will read tif or png files from an input directory and compute statistics on the cell images."
     print "The script must be pointed to a configuration ini file that will define several important aspects."
     print "The input and output dirs must be defined in the config file, however all of the rest of the config"
-    print " can be read in from the microscope properties if they exist in the Metadata dir in the input."
+    print " can be read in from the microscope properties."
+    print " For Leica microscopes, the Metadata directory is checked for properties."
+    print " For Cytation microscopes, properties are read from tif tags."
     print "The following parameters are recognized in the [Config] section:"
 
     print "inputDir  - Dir to read in tif files from. (Required)"
@@ -44,8 +46,9 @@ def printUsage():
 
     print "Usage: "
     print "<cfgPath>"
- 
- 
+
+
+
 ####
 #
 #
@@ -62,6 +65,8 @@ def getCSVHeader(cfg):
         headerString += "percent " + chan + ", "
     headerString += "classification \n"
     return headerString
+
+
 
 ####
 #
@@ -139,22 +144,26 @@ def main(cfg):
         minInfoIdx = min(tIdx, min(zIdx, chIdx))
         wellName = toks[wellIndex]
         wellNames.append(wellName)
+        # Se well description, usd for finding Lyca property files
         if not minInfoIdx == sys.maxint:
             wellDesc[toks[wellIndex]] = fileName[0:fileName.find(toks[minInfoIdx]) - 1]
+        # Determine if filename contains z or t info
         noZInFile[toks[wellIndex]] = zIdx == sys.maxint       
         noTInFile[toks[wellIndex]] = tIdx == sys.maxint
+        # Special handling of Z/T info for PNGs
         if (cfg.getValue(ELMConfig.imgType) == "png") :
             timestep = float(toks[tIdx])
             if wellName not in pngTimesteps:
                 pngTimesteps[wellName] = set()
             pngTimesteps[wellName].add(timestep)
             maxT[wellName] = len(pngTimesteps[wellName])
-            
+
             zSlice = float(toks[zIdx])
             if wellName not in pngZSlices:
                 pngZSlices[wellName] = set()
             pngZSlices[wellName].add(zSlice)
             numZ[wellName] = len(pngZSlices[wellName])
+        # Update min/max time info
         elif not tIdx == sys.maxint:
             cfg.setValue(ELMConfig.tIdx, tIdx)
             timeTok = toks[tIdx]
@@ -165,8 +174,10 @@ def main(cfg):
                 maxT[wellName] = timestep
             if wellName not in minT or timestep < minT[wellName]:
                 minT[wellName] = timestep
+        # Set channel file index
         if not chIdx == sys.maxint:
             cfg.setValue(ELMConfig.cIdx, chIdx)
+        # Set Z file index
         if not zIdx == sys.maxint:
             cfg.setValue(ELMConfig.zIdx, zIdx)
 
@@ -190,10 +201,12 @@ def main(cfg):
             if not wellName in cfg.getValue(ELMConfig.wellNames):
                 continue;
 
+        # Get files in this well
         dsImgFiles = [];
         for i in range(0, len(imgFiles)) :
             if wellName == wellNames[i] :
                 dsImgFiles.append(imgFiles[i])
+
         # Make sure output dir exists for well
         wellPath = os.path.join(cfg.getValue(ELMConfig.outputDir), wellName)
         if not os.path.exists(wellPath):
@@ -209,7 +222,8 @@ def main(cfg):
 
         if wellName in maxT:
             cfg.setValue(ELMConfig.numT, maxT[wellName] - minT[wellName] + 1)
-            
+
+        # Set special properties for PNG images
         if (cfg.getValue(ELMConfig.imgType) == "png"):
             zSlices = list(pngZSlices[wellName]);
             zSlices.sort()
@@ -218,7 +232,7 @@ def main(cfg):
             cfg.setValue(ELMConfig.zList, zSlices)
             cfg.setValue(ELMConfig.tList, timesteps)
             cfg.setValue(ELMConfig.numZ, numZ[wellName])
-            
+
         cfg.setValue(ELMConfig.noZInFile, noZInFile[wellName] or cfg.getValue(ELMConfig.numZ) == 1)
         cfg.setValue(ELMConfig.noTInFile, noTInFile[wellName] or cfg.getValue(ELMConfig.numT) == 1)
 
@@ -237,6 +251,7 @@ def main(cfg):
     for result in dsResults:
         resultsFile.write(result);
     resultsFile.close()
+
 
 
 ####
@@ -293,10 +308,7 @@ def processDataset(cfg, datasetName, imgFiles):
                     else:
                         area = sum(stats[c][z][t][ELMConfig.UM_AREA])
                         writeStats = True
-                    if "totalArea" not in channelAreas:
-                        channelAreas["totalArea"] = area
-                    else:
-                        channelAreas["totalArea"] = channelAreas["totalArea"] + area
+                    channelAreas["totalArea"] = area
                 # Handle Fluorescent Channels   
                 elif (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.BLUE) \
                         or (cfg.getValue(ELMConfig.chanLabel)[c] == ELMConfig.RED) \
@@ -307,14 +319,11 @@ def processDataset(cfg, datasetName, imgFiles):
                     else:
                         area = sum(stats[c][z][t][ELMConfig.UM_AREA])
                         writeStats = True
-                    if cfg.getValue(ELMConfig.chanLabel)[c] not in channelAreas:
-                        channelAreas[cfg.getValue(ELMConfig.chanLabel)[c]] = area
-                    else:
-                        channelAreas[cfg.getValue(ELMConfig.chanLabel)[c]] = channelAreas[cfg.getValue(ELMConfig.chanLabel)[c]] + area
+                    channelAreas[cfg.getValue(ELMConfig.chanLabel)[c]] = area
                 else:
                     print "ERROR! Unknown channel!"
                     quit(1)
-                # Write out individual areas per channel
+                # Write out blob stats per channel
                 if writeStats:
                     chanStr = '_' + cfg.getCStr(c)
                     zStr = '_' + cfg.getZStr(z)
@@ -336,19 +345,21 @@ def processDataset(cfg, datasetName, imgFiles):
                         chanResultsFile.write(line);
                     chanResultsFile.close()
 
-            if channelAreas["totalArea"] == 0:
-                channelAreas["totalArea"] = 0.000000001
-
+            # Generate output string for each z/t combo
             zStr = cfg.getZStr(z)
             tStr = cfg.getTStr(t)
             resultsString += datasetName + ", " + zStr + ", " + tStr + ", "
             resultsString += "\t\t\t %10.4f," % (channelAreas["totalArea"])
             numChans = len(outputChans)
             for i in range(0, numChans):
+                if channelAreas["totalArea"] == 0:
+                    totalArea = channelAreas[outputChans[i]]
+                else:
+                    totalArea = channelAreas["totalArea"]
                 numParticles = len(stats[i][z][t][ELMConfig.UM_AREA])
                 resultsString += "\t\t %d," % numParticles
                 resultsString += "\t\t %10.4f," % channelAreas[outputChans[i]]
-                resultsString += "\t\t %0.4f" % (channelAreas[outputChans[i]] /  channelAreas["totalArea"])
+                resultsString += "\t\t %0.4f" % (channelAreas[outputChans[i]] / totalArea)
                 if (i + 1 < numChans):
                     resultsString += ","
             resultsString += "\n"
@@ -356,6 +367,7 @@ def processDataset(cfg, datasetName, imgFiles):
     resultsFile.write(resultsString)
     resultsFile.close()
     return resultsString
+
 
 
 ####
@@ -498,6 +510,7 @@ def processImages(cfg, wellName, wellPath, images):
     return stats
 
 
+
 ####
 #
 #
@@ -532,4 +545,4 @@ start = time.time()
 main(cfg)
 end = time.time()
 
-print("Processed all images in " + str(end - start) + " s")
+print("Processed all images in " + str((end - start) / 60/ 60) + "m ("  + str(end - start) + "s)")
