@@ -261,7 +261,7 @@ def main(cfg):
 def processDataset(cfg, datasetName, imgFiles):
     datasetPath = os.path.join(cfg.getValue(ELMConfig.outputDir), datasetName)
 
-    # Count how many images we have for each channel/Z slice
+    # Categorize images based on c/z/t
     imgFileCats = [[[[] for t in range(cfg.getValue(ELMConfig.numT))] for z in range(cfg.getValue(ELMConfig.numZ))] for c in range(cfg.getValue(ELMConfig.numChannels))]
     if cfg.params[ELMConfig.imgType] == "png":
         for imgPath in imgFiles:
@@ -271,6 +271,7 @@ def processDataset(cfg, datasetName, imgFiles):
                 imgFileCats[c][z][t].append(imgPath)
                 if (len(imgFileCats[c][z][t]) > 1):
                     print "ERROR: More than one image for c,z,t: " + str(c) + ", " + str(z) + ", "+ str(t)
+                    quit(-1)
     else:
         for imgPath in imgFiles:
             fileName = os.path.basename(imgPath)
@@ -278,6 +279,20 @@ def processDataset(cfg, datasetName, imgFiles):
             imgFileCats[c][z][t].append(imgPath)
             if (len(imgFileCats[c][z][t]) > 1):
                 print "ERROR: More than one image for c,z,t: " + str(c) + ", " + str(z) + ", "+ str(t)
+                quit(-1)
+
+    # Check that we have an image for each category
+    missingImage = False
+    for t in range(cfg.getValue(ELMConfig.numT)):
+        for z in range(cfg.getValue(ELMConfig.numZ)):
+            for c in range(cfg.getValue(ELMConfig.numChannels)):
+                if cfg.getValue(ELMConfig.chanLabel)[c] in cfg.getValue(ELMConfig.chansToSkip):
+                    continue;
+                if not imgFileCats[c][z][t]:
+                    print "ERROR: No image for c,z,t: " + str(c) + ", " + str(z) + ", "+ str(t)
+                    missingImage = True
+    if missingImage:
+        quit(-1)
 
     # Process images
     stats = processImages(cfg, datasetName, datasetPath, imgFileCats)
