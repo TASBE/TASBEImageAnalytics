@@ -127,7 +127,10 @@ def main(cfg):
         else :
             # Parse file name to get indices of certain values
             tIdx = zIdx = chIdx = sys.maxint
-            wellIndex = sys.maxint # This will be the lowest index that matches the well expression
+            if (cfg.hasValue(ELMConfig.wellIdx)) :
+                wellIndex = cfg.getValue(ELMConfig.wellIdx)
+            else:
+                wellIndex = sys.maxint # This will be the lowest index that matches the well expression
             # On the Cytation scope, time is the last token
             if cfg.isCytation:
                 tIdx = len(toks) - 1
@@ -138,18 +141,24 @@ def main(cfg):
                     zIdx = i
                 if chRE.match(toks[i]):
                     chIdx = i
-                if (wellRE.match(toks[i]) or posRE.match(toks[i])) and i < wellIndex:
+                if not cfg.hasValue(ELMConfig.wellIdx) and (wellRE.match(toks[i]) or posRE.match(toks[i])) and i < wellIndex:
                     wellIndex = i
 
         minInfoIdx = min(tIdx, min(zIdx, chIdx))
-        wellName = toks[wellIndex]
+        if isinstance(wellIndex, list):
+            wellName = ""
+            for idx in wellIndex:
+                wellName += toks[idx] + "_"
+            wellName = wellName[0:len(wellName) - 1]
+        else:
+            wellName = toks[wellIndex]
         wellNames.append(wellName)
         # Se well description, usd for finding Lyca property files
         if not minInfoIdx == sys.maxint:
-            wellDesc[toks[wellIndex]] = fileName[0:fileName.find(toks[minInfoIdx]) - 1]
+            wellDesc[wellName] = fileName[0:fileName.find(toks[minInfoIdx]) - 1]
         # Determine if filename contains z or t info
-        noZInFile[toks[wellIndex]] = zIdx == sys.maxint       
-        noTInFile[toks[wellIndex]] = tIdx == sys.maxint
+        noZInFile[wellName] = zIdx == sys.maxint
+        noTInFile[wellName] = tIdx == sys.maxint
         # Special handling of Z/T info for PNGs
         if (cfg.getValue(ELMConfig.imgType) == "png") :
             timestep = float(toks[tIdx])
