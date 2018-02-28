@@ -569,4 +569,4 @@ start = time.time()
 main(cfg)
 end = time.time()
 
-print("Processed all images in " + str((end - start) / 60/ 60) + "m ("  + str(end - start) + "s)")
+print("Processed all images in " + str((end - start) / 60) + "m ("  + str(end - start) + "s)")
