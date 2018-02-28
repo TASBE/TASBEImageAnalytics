@@ -155,7 +155,10 @@ class ConfigParams:
             if key == zList or key == tList: # skip large config params
                 continue;
             if isinstance(self.params[key], list):
-                print("\t" + key + ":\t" + ", ".join(self.params[key]))
+                stingList = []
+                for item in self.params[key]:
+                    stingList.append(str(item))
+                print("\t" + key + ":\t" + ", ".join(stingList))
             elif isinstance(self.params[key], int) or isinstance(self.params[key], float):
                 print("\t" + key + ":\t" + str(self.params[key]))
             else:
