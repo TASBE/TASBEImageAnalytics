@@ -377,10 +377,16 @@ def processDataset(cfg, datasetName, imgFiles):
             numChans = len(outputChans)
             for i in range(0, numChans):
                 if channelAreas["totalArea"] == 0:
-                    totalArea = channelAreas[outputChans[i]]
+                    if channelAreas[outputChans[i]] == 0:
+                        totalArea = 1
+                    else:
+                        totalArea = channelAreas[outputChans[i]]
                 else:
                     totalArea = channelAreas["totalArea"]
-                numParticles = len(stats[i][z][t][ELMConfig.UM_AREA])
+                if not ELMConfig.UM_AREA in stats[i][z][t]:
+                    numParticles = -1;
+                else:
+                    numParticles = len(stats[i][z][t][ELMConfig.UM_AREA])
                 resultsString += "\t\t %d," % numParticles
                 resultsString += "\t\t %10.4f," % channelAreas[outputChans[i]]
                 resultsString += "\t\t %0.4f" % (channelAreas[outputChans[i]] / totalArea)
