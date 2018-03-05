@@ -50,6 +50,7 @@ numChannels = "numChannels"
 numTimesteps = "numTimesteps"
 numZ = "numZ"
 numT = "numT"
+minT = "minT"
 noZInFile = "noZInFile"
 noTInFile = "noTInFile"
 chanLabel ="ChanLabel"
@@ -97,6 +98,7 @@ class ConfigParams:
         self.params[numChannels] = 4;
         self.params[numZ] = 1;
         self.params[numT] = 1;
+        self.params[minT] = 0;
         self.params[noZInFile] = True;
         self.params[noTInFile] = True;
         self.params[chanLabel] = [SKIP, YELLOW, BLUE, BRIGHTFIELD];
@@ -278,8 +280,8 @@ class ConfigParams:
         else:
             tStr = fileToks[self.params[tIdx]]
             t = int(tStr.replace('t',''))
-            if self.isCytation:
-                t -= 1
+            if self.hasValue(minT):
+                t -= self.getValue(minT)
         return chan, z, t
 
 
@@ -330,6 +332,8 @@ class ConfigParams:
                 self.params[numZ] = int(cfgParser.get(cfgSection, option))
             elif option == numT.lower():
                 self.params[numT] = int(cfgParser.get(cfgSection, option))
+            elif option == minT.lower():
+                self.params[minT] = int(cfgParser.get(cfgSection, option))
             elif option == pcloudColorThresh.lower():
                 self.params[pcloudColorThresh] = int(cfgParser.get(cfgSection, option))
             elif option == pcloudExclusionX.lower() or option == lowerRightExclusionX.lower():
