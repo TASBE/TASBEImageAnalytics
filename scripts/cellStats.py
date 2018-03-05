@@ -231,6 +231,8 @@ def main(cfg):
 
         if wellName in maxT:
             cfg.setValue(ELMConfig.numT, maxT[wellName] - minT[wellName] + 1)
+        if wellName in minT:
+            cfg.setValue(ELMConfig.minT, minT[wellName])
 
         # Set special properties for PNG images
         if (cfg.getValue(ELMConfig.imgType) == "png"):
