@@ -166,6 +166,7 @@ def main(cfg):
                 pngTimesteps[wellName] = set()
             pngTimesteps[wellName].add(timestep)
             maxT[wellName] = len(pngTimesteps[wellName])
+            minT[wellName] = 1
 
             zSlice = float(toks[zIdx])
             if wellName not in pngZSlices:
