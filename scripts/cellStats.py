@@ -120,9 +120,19 @@ def main(cfg):
         toks = os.path.splitext(fileName)[0].split("_")
         
         if (cfg.getValue(ELMConfig.imgType) == "png") :
-            wellIndex = ELMConfig.pngWellIndex
-            zIdx = ELMConfig.pngZIdx
-            tIdx = ELMConfig.pngTIdx
+            if not cfg.hasValue(ELMConfig.wellIdx):
+                print "wellIdx not defined, required for png type!"
+                quit(-1)
+            if not cfg.hasValue(ELMConfig.zIdx):
+                print "zIdx not defined, required for png type!"
+                quit(-1)
+            if not cfg.hasValue(ELMConfig.tIdx):
+                print "tIdx not defined, required for png type!"
+                quit(-1)
+
+            wellIndex = cfg.getValue(ELMConfig.wellIdx)
+            zIdx = cfg.getValue(ELMConfig.zIdx)
+            tIdx = cfg.getValue(ELMConfig.tIdx)
             chIdx = sys.maxint
         else :
             # Parse file name to get indices of certain values
@@ -157,8 +167,8 @@ def main(cfg):
         if not minInfoIdx == sys.maxint:
             wellDesc[wellName] = fileName[0:fileName.find(toks[minInfoIdx]) - 1]
         # Determine if filename contains z or t info
-        noZInFile[wellName] = zIdx == sys.maxint
-        noTInFile[wellName] = tIdx == sys.maxint
+        noZInFile[wellName] = zIdx < 0
+        noTInFile[wellName] = tIdx < 0
         # Special handling of Z/T info for PNGs
         if (cfg.getValue(ELMConfig.imgType) == "png") :
             timestep = float(toks[tIdx])
@@ -168,11 +178,12 @@ def main(cfg):
             maxT[wellName] = len(pngTimesteps[wellName])
             minT[wellName] = 1
 
-            zSlice = float(toks[zIdx])
-            if wellName not in pngZSlices:
-                pngZSlices[wellName] = set()
-            pngZSlices[wellName].add(zSlice)
-            numZ[wellName] = len(pngZSlices[wellName])
+            if not noZInFile[wellName]:
+                zSlice = float(toks[zIdx])
+                if wellName not in pngZSlices:
+                    pngZSlices[wellName] = set()
+                pngZSlices[wellName].add(zSlice)
+                numZ[wellName] = len(pngZSlices[wellName])
         # Update min/max time info
         elif not tIdx == sys.maxint:
             cfg.setValue(ELMConfig.tIdx, tIdx)
@@ -237,13 +248,17 @@ def main(cfg):
 
         # Set special properties for PNG images
         if (cfg.getValue(ELMConfig.imgType) == "png"):
-            zSlices = list(pngZSlices[wellName]);
-            zSlices.sort()
             timesteps = list(pngTimesteps[wellName])
             timesteps.sort()
-            cfg.setValue(ELMConfig.zList, zSlices)
             cfg.setValue(ELMConfig.tList, timesteps)
-            cfg.setValue(ELMConfig.numZ, numZ[wellName])
+            if noZInFile[wellName]:
+                cfg.setValue(ELMConfig.numZ, 1)
+                cfg.setValue(ELMConfig.zList, [0])
+            else:
+                cfg.setValue(ELMConfig.numZ, numZ[wellName])
+                zSlices = list(pngZSlices[wellName]);
+                zSlices.sort()
+                cfg.setValue(ELMConfig.zList, zSlices)
 
         cfg.setValue(ELMConfig.noZInFile, noZInFile[wellName] or cfg.getValue(ELMConfig.numZ) == 1)
         cfg.setValue(ELMConfig.noTInFile, noTInFile[wellName] or cfg.getValue(ELMConfig.numT) == 1)
