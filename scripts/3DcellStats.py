@@ -59,39 +59,76 @@ def main(cfg):
     # Sort filenames so they are in order by z and ch
     ELMConfig.sort_nicely(imgFiles)
 
-    # Get the names of all wells that exist in this dataset/plate
+# Get the names of all wells that exist in this dataset/plate
     wellNames = []
     # Each well will have a collection of images, but will all fall under the same common prefix descriptor
     # Such as: plate1_Aug284pm_A1_S001
     wellDesc = dict()
     noZInFile = dict()
+    noTInFile = dict()
+    maxT = dict()
+    minT = dict()
+    numZ = dict()
+    pngTimesteps = dict()
+    pngZSlices = dict()
+
     # Analyze image filenames to get different pieces of information
     # We care about a time, Z, channel, and the well name
     timeRE = re.compile("^t[0-9]+$")
     zRE    = re.compile("z[0-9]+$")
     chRE   = re.compile("^ch[0-9]+$")
-    wellRE   = re.compile("^[a-zA-Z][0-9]+$")
-    wellRepeat = re.compile("repeat") # Special case of a well name
+    wellRE = re.compile("^[A-Z][0-9]+$")
     for filePath in imgFiles:
         fileName = os.path.basename(filePath)
         toks = os.path.splitext(fileName)[0].split("_")
+
         # Parse file name to get indices of certain values
         tIdx = zIdx = chIdx = sys.maxint
-        wellIndex = sys.maxint # This will be the lowest index that matches the well expression
+        if (cfg.hasValue(ELMConfig.wellIdx)) :
+            wellIndex = cfg.getValue(ELMConfig.wellIdx)
+        else:
+            wellIndex = sys.maxint # This will be the lowest index that matches the well expression
         for i in range(0, len(toks)):
             if timeRE.match(toks[i]):
                 tIdx = i
             if zRE.match(toks[i]):
                 zIdx = i
-            if chRE.match(toks[i]):
+            if chRE.match(toks[i]) or toks[i] in cfg.getValue(ELMConfig.chanLabel):
                 chIdx = i
-            if (wellRE.match(toks[i]) or wellRepeat.match(toks[i])) and i < wellIndex:
+            if not cfg.hasValue(ELMConfig.wellIdx) and wellRE.match(toks[i]) and i < wellIndex:
                 wellIndex = i
-        
+
         minInfoIdx = min(tIdx, min(zIdx, chIdx))
-        wellNames.append(toks[wellIndex])
-        wellDesc[toks[wellIndex]] = fileName[0:fileName.find(toks[minInfoIdx]) - 1]
-        noZInFile[toks[wellIndex]] = zIdx == -1        
+        if isinstance(wellIndex, list):
+            wellName = ""
+            for idx in wellIndex:
+                wellName += toks[idx] + "_"
+            wellName = wellName[0:len(wellName) - 1]
+        else:
+            wellName = toks[wellIndex]
+        wellNames.append(wellName)
+        # Se well description, usd for finding Lyca property files
+        if not minInfoIdx == sys.maxint:
+            wellDesc[wellName] = fileName[0:fileName.find(toks[minInfoIdx]) - 1]
+        # Determine if filename contains z or t info
+        noZInFile[wellName] = zIdx == sys.maxint
+        noTInFile[wellName] = tIdx == sys.maxint
+        if not tIdx == sys.maxint:
+            cfg.setValue(ELMConfig.tIdx, tIdx)
+            timeTok = toks[tIdx]
+            if 't' in timeTok:
+                timeTok = timeTok.replace('t','')
+            timestep = int(timeTok)
+            if wellName not in maxT or timestep > maxT[wellName]:
+                maxT[wellName] = timestep
+            if wellName not in minT or timestep < minT[wellName]:
+                minT[wellName] = timestep
+        # Set channel file index
+        if not chIdx == sys.maxint:
+            cfg.setValue(ELMConfig.cIdx, chIdx)
+        # Set Z file index
+        if not zIdx == sys.maxint:
+            cfg.setValue(ELMConfig.zIdx, zIdx)
 
     uniqueNames = list(set(wellNames))
     ELMConfig.sort_nicely(uniqueNames)
@@ -127,7 +164,15 @@ def main(cfg):
                 continue;
             cfg.updateCfgWithXML(xmlFile)
             cfg.setValue(ELMConfig.noZInFile, noZInFile[wellName] or cfg.getValue(ELMConfig.numZ) == 1)
-        
+
+        if wellName in maxT:
+            cfg.setValue(ELMConfig.numT, maxT[wellName] - minT[wellName] + 1)
+        if wellName in minT:
+            cfg.setValue(ELMConfig.minT, minT[wellName])
+
+        cfg.setValue(ELMConfig.noZInFile, noZInFile[wellName] or cfg.getValue(ELMConfig.numZ) == 1)
+        cfg.setValue(ELMConfig.noTInFile, noTInFile[wellName] or cfg.getValue(ELMConfig.numT) == 1)
+
         print ("Beginning well " + wellName + "...")
         cfg.printCfg()
         start = time.time()
@@ -142,24 +187,28 @@ def main(cfg):
 ####
 def processDataset(cfg, datasetName, imgFiles):
     datasetPath = os.path.join(cfg.getValue(ELMConfig.outputDir), datasetName)
+    # Categorize images based on c/z/t
+    imgFileCats = [[[[] for t in range(cfg.getValue(ELMConfig.numT))] for z in range(cfg.getValue(ELMConfig.numZ))] for c in range(cfg.getValue(ELMConfig.numChannels))]
+    for imgPath in imgFiles:
+        fileName = os.path.basename(imgPath)
+        c,z,t = cfg.getCZTFromFilename(fileName)
+        imgFileCats[c][z][t].append(imgPath)
+        if (len(imgFileCats[c][z][t]) > 1):
+            print "ERROR: More than one image for c,z,t: " + str(c) + ", " + str(z) + ", "+ str(t)
+            quit(-1)
 
-    # Count how many images we have for each channel/Z slice
-    imgFileCats = [[[] for z in range(cfg.getValue(ELMConfig.numZ))] for c in range(cfg.getValue(ELMConfig.numChannels))]
-    addedImages = False
-    for c in range(0, cfg.getValue(ELMConfig.numChannels)):
-        chanStr = 'ch%(channel)02d' % {"channel" : c};
-        for z in range(0, cfg.getValue(ELMConfig.numZ)):
-            zStr = cfg.getZStr(z);
-            for imgPath in imgFiles:
-                fileName = os.path.basename(imgPath)
-                if chanStr in fileName and (cfg.getValue(ELMConfig.noZInFile) or zStr in fileName):
-                    addedImages = True
-                    imgFileCats[c][z] = imgPath
-
-    # Check for no images
-    if not addedImages:
-        print "Failed to add any images to chan/z categories! Problem with input dir?"
-        quit(1)
+    # Check that we have an image for each category
+    missingImage = False
+    for t in range(cfg.getValue(ELMConfig.numT)):
+        for z in range(cfg.getValue(ELMConfig.numZ)):
+            for c in range(cfg.getValue(ELMConfig.numChannels)):
+                if cfg.getValue(ELMConfig.chanLabel)[c] in cfg.getValue(ELMConfig.chansToSkip):
+                    continue;
+                if not imgFileCats[c][z][t]:
+                    print "ERROR: No image for c,z,t: " + str(c) + ", " + str(z) + ", "+ str(t)
+                    missingImage = True
+    if missingImage:
+        quit(-1)
 
     # Process all images
     for c in range(0, cfg.getValue(ELMConfig.numChannels)):
@@ -194,77 +243,79 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
     numColorThreshPts = 0
     ptCount = 0
     print "\tProcessing channel: " + chanName
-    for z in range(0, cfg.getValue(ELMConfig.numZ)):
-        zStr = cfg.getZStr(z);
-        currIP = IJ.openImage(imgFiles[z])
-        origImage = currIP.duplicate();
-        if cfg.getValue(ELMConfig.debugOutput):
-            WindowManager.setTempCurrentImage(currIP);
-            IJ.saveAs('png', os.path.join(wellPath, "Orig_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
-            
-        # We need to get to a grayscale image, which will be done differently for different channels
-        dbgOutDesc = wellName + "_" + zStr + "_" + chanStr
-        currIP = ELMImageUtils.getGrayScaleImage(currIP, c, z, 1, chanName, cfg, wellPath, dbgOutDesc)
-        if (not currIP) :
-            continue
-
-        currProcessor = currIP.getProcessor()
-        #WindowManager.setTempCurrentImage(currIP);
-        #currIP.show()
-        for x in range(0, currIP.getWidth()) :
-            for y in range(0,currIP.getHeight()) :
-                if not currProcessor.get(x,y) == 0x00000000:
-                    ptCount += 1
-                    ptX = x * cfg.getValue(ELMConfig.pixelWidth)
-                    ptY = y * cfg.getValue(ELMConfig.pixelHeight)
-                    ptZ = z * cfg.getValue(ELMConfig.pixelDepth);
-                    colorPix = origImage.getPixel(x,y)
-                    red   = colorPix[0]
-                    green = colorPix[1]
-                    blue  = colorPix[2]
-                    # Check that point meets color threshold
-                    aboveColorThresh = not cfg.hasValue(ELMConfig.pcloudColorThresh) \
-                        or colorPix[chanPixBand] > cfg.getValue(ELMConfig.pcloudColorThresh)
-                    # Check that point isn't in exclusion zone
-                    outsideExclusion = not (cfg.hasValue(ELMConfig.pcloudExclusionX) and cfg.hasValue(ELMConfig.pcloudExclusionY)) \
-                        or (x < cfg.getValue(ELMConfig.pcloudExclusionX) or y < cfg.getValue(ELMConfig.pcloudExclusionY))
-
-                    if (aboveColorThresh and outsideExclusion):
-                        points.append([ptX, ptY, ptZ, red, green, blue])
-                    elif (not aboveColorThresh):
-                        numColorThreshPts += 1
-                    elif (not outsideExclusion):
-                        numExclusionPts += 1
-
-        currIP.close()
-        origImage.close()
-
-    print "\t\tTotal points considered: " + str(ptCount)
-    print "\t\tColor Threshold Skipped " + str(numColorThreshPts) + " points."
-    print "\t\tExclusion Zone  Skipped " + str(numExclusionPts) + " points."
-
-    numPoints = len(points);
-    cloudName = chanName + "_cloud.ply"
-    resultsFile = open(os.path.join(wellPath, cloudName), "w")
+    for t in range(cfg.getValue(ELMConfig.numT)):
+        tStr = cfg.getTStr(t)
+        for z in range(0, cfg.getValue(ELMConfig.numZ)):
+            zStr = cfg.getZStr(z);
+            currIP = IJ.openImage(imgFiles[z][t][0])
+            origImage = currIP.duplicate();
+            if cfg.getValue(ELMConfig.debugOutput):
+                WindowManager.setTempCurrentImage(currIP);
+                IJ.saveAs('png', os.path.join(wellPath, "Orig_" + wellName + "_" + zStr + "_" + chanStr + ".png"))
+                
+            # We need to get to a grayscale image, which will be done differently for different channels
+            dbgOutDesc = wellName + "_" + tStr + "_" + zStr + "_" + chanStr
+            currIP = ELMImageUtils.getGrayScaleImage(currIP, c, z, 1, chanName, cfg, wellPath, dbgOutDesc)
+            if (not currIP) :
+                continue
     
-    resultsFile.write("ply\n")
-    resultsFile.write("format ascii 1.0\n")
-    resultsFile.write("element vertex " + str(numPoints) + "\n")
-    resultsFile.write("property float x\n")
-    resultsFile.write("property float y\n")
-    resultsFile.write("property float z\n")
-    resultsFile.write("property uchar red\n")
-    resultsFile.write("property uchar green\n")
-    resultsFile.write("property uchar blue\n")
-    resultsFile.write("end_header\n")
-    for line in points:
-        resultsFile.write("%f %f %f %d %d %d\n" % (line[0], line[1], line[2], line[3], line[4], line[5]))
-    resultsFile.close()
-
-    if (numPoints > 0):
-        compute3DStats(cfg, wellPath, chanName, cloudName)
-    else:
-        print "Skipping segmentation, because cloud has no points!"
+            currProcessor = currIP.getProcessor()
+            #WindowManager.setTempCurrentImage(currIP);
+            #currIP.show()
+            for x in range(0, currIP.getWidth()) :
+                for y in range(0,currIP.getHeight()) :
+                    if not currProcessor.get(x,y) == 0x00000000:
+                        ptCount += 1
+                        ptX = x * cfg.getValue(ELMConfig.pixelWidth)
+                        ptY = y * cfg.getValue(ELMConfig.pixelHeight)
+                        ptZ = z * cfg.getValue(ELMConfig.pixelDepth);
+                        colorPix = origImage.getPixel(x,y)
+                        red   = colorPix[0]
+                        green = colorPix[1]
+                        blue  = colorPix[2]
+                        # Check that point meets color threshold
+                        aboveColorThresh = not cfg.hasValue(ELMConfig.pcloudColorThresh) \
+                            or colorPix[chanPixBand] > cfg.getValue(ELMConfig.pcloudColorThresh)
+                        # Check that point isn't in exclusion zone
+                        outsideExclusion = not (cfg.hasValue(ELMConfig.pcloudExclusionX) and cfg.hasValue(ELMConfig.pcloudExclusionY)) \
+                            or (x < cfg.getValue(ELMConfig.pcloudExclusionX) or y < cfg.getValue(ELMConfig.pcloudExclusionY))
+    
+                        if (aboveColorThresh and outsideExclusion):
+                            points.append([ptX, ptY, ptZ, red, green, blue])
+                        elif (not aboveColorThresh):
+                            numColorThreshPts += 1
+                        elif (not outsideExclusion):
+                            numExclusionPts += 1
+    
+            currIP.close()
+            origImage.close()
+    
+        print "\t\tTotal points considered: " + str(ptCount)
+        print "\t\tColor Threshold Skipped " + str(numColorThreshPts) + " points."
+        print "\t\tExclusion Zone  Skipped " + str(numExclusionPts) + " points."
+    
+        numPoints = len(points);
+        cloudName = chanName + "_" + tStr + "_cloud.ply"
+        resultsFile = open(os.path.join(wellPath, cloudName), "w")
+        
+        resultsFile.write("ply\n")
+        resultsFile.write("format ascii 1.0\n")
+        resultsFile.write("element vertex " + str(numPoints) + "\n")
+        resultsFile.write("property float x\n")
+        resultsFile.write("property float y\n")
+        resultsFile.write("property float z\n")
+        resultsFile.write("property uchar red\n")
+        resultsFile.write("property uchar green\n")
+        resultsFile.write("property uchar blue\n")
+        resultsFile.write("end_header\n")
+        for line in points:
+            resultsFile.write("%f %f %f %d %d %d\n" % (line[0], line[1], line[2], line[3], line[4], line[5]))
+        resultsFile.close()
+    
+        if (numPoints > 0):
+            compute3DStats(cfg, wellPath, chanName, cloudName)
+        else:
+            print "Skipping segmentation, because cloud has no points!"
 
     print ""
 
