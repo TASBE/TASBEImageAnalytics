@@ -242,7 +242,7 @@ class ConfigParams:
     ###
     def getZTFromFilename(self, fileName):
         if not self.params[imgType] == "png":
-            print "Error: calling getCZTFromFilename on non-PNG image!"
+            print "Error: calling getZTFromFilename on non-PNG image!"
             return
         
         fileToks = os.path.splitext(fileName)[0].split("_")
@@ -255,13 +255,13 @@ class ConfigParams:
     ###
     def getCZTFromFilename(self, fileName):
         if not self.hasValue(cIdx):
-            print "Error: calling getCZTFromFilename with no defiend cIdx!"
+            print "Error: calling getCZTFromFilename with no defined cIdx!"
             quit(-1)
         if not self.params[noZInFile] and not self.hasValue(zIdx):
-            print "Error: calling getCZTFromFilename with no defiend zIdx!"
+            print "Error: calling getCZTFromFilename with no defined zIdx!"
             quit(-1)
-        if not self.params[noZInFile] and not self.hasValue(tIdx):
-            print "Error: calling getCZTFromFilename with no defiend tIdx!"
+        if not self.params[noTInFile] and not self.hasValue(tIdx):
+            print "Error: calling getCZTFromFilename with no defined tIdx!"
             quit(-1)
 
         fileToks = os.path.splitext(fileName)[0].split("_")
