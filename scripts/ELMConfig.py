@@ -73,10 +73,6 @@ upperLeftExclusionX  = "upperLeftExclusionX"
 upperLeftExclusionY  = "upperLeftExclusionY"
 maxThreshRange = "maxThreshRange"
 
-pngWellIndex = 1
-pngZIdx = 2
-pngTIdx = 3
-
 CYTATION_METADATA_TIFF_TAG = 270
 
 ####
@@ -221,8 +217,8 @@ class ConfigParams:
         
         if self.params[imgType] == "png":
             cMatch = True
-            zMatch = zStr == fileToks[pngZIdx]
-            tMatch = tStr == fileToks[pngTIdx] 
+            zMatch = zStr == fileToks[self.getValue(zIdx)]
+            tMatch = tStr == fileToks[self.getValue(tIdx)] 
             return cMatch and zMatch and tMatch
         
         cMatch = cStr in fileName
@@ -246,8 +242,11 @@ class ConfigParams:
             return
         
         fileToks = os.path.splitext(fileName)[0].split("_")
-        zVal = float(fileToks[pngZIdx])
-        tVal = float(fileToks[pngTIdx])
+        if self.getValue(noZInFile):
+            zVal = 0
+        else:
+            zVal = float(fileToks[self.getValue(zIdx)])
+        tVal = float(fileToks[self.getValue(tIdx)])
         return self.params[zList].index(zVal), self.params[tList].index(tVal)
     
     ###
@@ -336,6 +335,10 @@ class ConfigParams:
                 self.params[numT] = int(cfgParser.get(cfgSection, option))
             elif option == minT.lower():
                 self.params[minT] = int(cfgParser.get(cfgSection, option))
+            elif option == tIdx.lower():
+                self.params[tIdx] = int(cfgParser.get(cfgSection, option))
+            elif option == zIdx.lower():
+                self.params[zIdx] = int(cfgParser.get(cfgSection, option))
             elif option == pcloudColorThresh.lower():
                 self.params[pcloudColorThresh] = int(cfgParser.get(cfgSection, option))
             elif option == pcloudExclusionX.lower() or option == lowerRightExclusionX.lower():
