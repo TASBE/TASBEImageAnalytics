@@ -71,6 +71,7 @@ lowerRightExclusionX  = "lowerRightExclusionX"
 lowerRightExclusionY  = "lowerRightExclusionY"
 upperLeftExclusionX  = "upperLeftExclusionX"
 upperLeftExclusionY  = "upperLeftExclusionY"
+maxThreshRange = "maxThreshRange"
 
 pngWellIndex = 1
 pngZIdx = 2
@@ -105,6 +106,7 @@ class ConfigParams:
         self.params[chansToSkip] = [];
         self.params[inputDir] = '';
         self.params[outputDir] = '';
+        self.params[maxThreshRange] = 230
         # We need to avoid the scale bar in the bottom of the image, so set a roi that doesn't include it
         #self.params[analysisRoi] = [0,0,512,480]
         #self.params[analysisRoi] = [0,0,1024,980]
@@ -344,6 +346,8 @@ class ConfigParams:
                 self.params[upperLeftExclusionX] = int(cfgParser.get(cfgSection, option))
             elif option == upperLeftExclusionY.lower():
                 self.params[upperLeftExclusionY] = int(cfgParser.get(cfgSection, option))
+            elif option == maxThreshRange.lower():
+                self.params[maxThreshRange] = int(cfgParser.get(cfgSection, option))
             elif option == noZInFile.lower():
                 self.params[noZInFile]  = cfgParser.get(cfgSection, option) == "True"
             elif option == noTInFile.lower():
