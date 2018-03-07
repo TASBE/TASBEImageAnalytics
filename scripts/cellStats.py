@@ -40,7 +40,6 @@ def printUsage():
     print "            Valid labels: skip, brightfield, red, green, blue, yellow"
     print "chansToSkip - List of channel names that will be skipped if channels are read from XML properties"
     print "analysisRoi - Rectangular area to perform cell detection on, default 0,0,512,480, must be defined in config file"
-    print "dsNameIdx - Index of well name within filename, when delimiting on underscores (_), also read from XML properties"
     print "wellNames - Optional, list of well names to process, others are ignored"
     print "debugOutput - Optional, True or False, if True output additional info for debugging purposes"
 

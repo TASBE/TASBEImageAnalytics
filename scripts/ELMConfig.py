@@ -58,7 +58,6 @@ chansToSkip = "ChansToSkip"
 inputDir = "inputDir"
 outputDir = "outputDir"
 analysisRoi = "analysisRoi"
-dsNameIdx = "dsNameIdx"
 pixelHeight = "pixelHeight"
 pixelDepth = "pixelDepth"
 pixelWidth = "pixelWidth"
@@ -103,11 +102,7 @@ class ConfigParams:
         self.params[inputDir] = '';
         self.params[outputDir] = '';
         self.params[maxThreshRange] = 230
-        # We need to avoid the scale bar in the bottom of the image, so set a roi that doesn't include it
-        #self.params[analysisRoi] = [0,0,512,480]
-        #self.params[analysisRoi] = [0,0,1024,980]
         # Determines what index the dataset name is within the tokenized filename
-        self.params[dsNameIdx] = 4;
         #self.params[pixelHeight] = 1; # in micrometers
         #self.params[pixelWidth] = 1; # in micrometers
         #self.params[wellNames] = [] # List of well names to process, empty implies process all
@@ -372,8 +367,6 @@ class ConfigParams:
                 if not len(toks) == 4:
                     print "Improper value for analysisRoi config, expected " + 4+ " comma separated values!  Received " + str(len(toks))
                 self.params[analysisRoi] = [toks[0],toks[1],toks[2],toks[3]]
-            elif option == dsNameIdx.lower():
-                self.params[dsNameIdx] = int(cfgParser.get(cfgSection, option))
             elif option == wellNames.lower():
                 toks = cfgParser.get(cfgSection, option).split(",")
                 self.params[wellNames] = []
