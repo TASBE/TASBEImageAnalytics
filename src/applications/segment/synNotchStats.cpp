@@ -177,49 +177,76 @@ int main(const int argc, const char **argv) {
 	ss.str(""); ss.clear();
 	ss << boostSynNotchOutPath.string() << "/synNotchStats.csv";
 	snStats.open(ss.str().c_str());
-	snStats << "red clusterId, closest blue dist, closest blue/green dist, "
-			"closest blue id, closest blue size, closest blue volume,"
-			"closest blue/green id, closest blue/green size, "
-			"closest blue/green volume" << endl;
+	snStats << "blue clusterId, blue volume, "
+			"closest red dist, closest green dist, "
+			"closest red id, closest red volume,"
+			"closest green id, "
+			"closest green volume" << endl;
 	set<uint32_t> usedIds[chan::NUM];
-	double ptVolume = scopeProps.pixelDepth * scopeProps.pixelHeight * scopeProps.pixelWidth;
-	for (auto const & redCl : clusterClouds[chan::RED]) {
-		double closestBlueDist = -1;
-		uint32_t closestBlueId;
-		uint32_t closestBlueSize;
-		for (auto const & blueCl : clusterClouds[chan::BLUE]) {
+	double ptVol = scopeProps.pixelDepth * scopeProps.pixelHeight * scopeProps.pixelWidth;
+	for (auto const & blueCl : clusterClouds[chan::BLUE]) {
+		double closestRedDist = -1;
+		uint32_t closestRedId;
+		uint32_t closestRedSize;
+		for (auto const & redCl : clusterClouds[chan::RED]) {
 			double rbDist = intraCloudDistance(redCl.second, blueCl.second);
-			if (closestBlueDist == -1 || rbDist < closestBlueDist) {
-				closestBlueDist = rbDist;
-				closestBlueId = blueCl.first;
-				closestBlueSize = blueCl.second.size();
+			if (closestRedDist == -1 || rbDist < closestRedDist) {
+				closestRedDist = rbDist;
+				closestRedId = redCl.first;
+				closestRedSize = redCl.second.size();
 			}
 		}
-		Cloud const & closestBlueCl = clusterClouds[chan::BLUE][closestBlueId];
 		double closestGreenDist = -1;
 		uint32_t closestGreenId;
 		uint32_t closestGreenSize;
 		for (auto const & greenCl : clusterClouds[chan::GREEN]) {
-			double bgDist = intraCloudDistance(closestBlueCl, greenCl.second);
+			double bgDist = intraCloudDistance(blueCl.second, greenCl.second);
 			if (closestGreenDist == -1 || bgDist < closestGreenDist) {
 				closestGreenDist = bgDist;
 				closestGreenId = greenCl.first;
 				closestGreenSize = greenCl.second.size();
 			}
 		}
-		usedIds[chan::RED].insert(redCl.first);
 		usedIds[chan::GREEN].insert(closestGreenId);
-		usedIds[chan::BLUE].insert(closestBlueId);
-		snStats << redCl.first << ", " << closestBlueDist << ", "
-				<< closestGreenDist << ", " << closestBlueId << ", "
-				<< closestBlueSize << ", " << closestBlueSize * ptVolume << ", "
-				<< closestGreenId << ", " << closestGreenSize << ", "
-				<< closestGreenSize * ptVolume << endl;
+		usedIds[chan::BLUE].insert(blueCl.first);
+		if (closestRedDist < 1) { // Matched a Red
+			usedIds[chan::RED].insert(closestRedId);
+			int blueSize = blueCl.second.size();
+			snStats << blueCl.first << ", " << blueSize * ptVol << ", "
+					<< closestRedDist << ", " << closestGreenDist << ", "
+					<< closestRedId << ", " << closestRedSize * ptVol << ", "
+					<< closestGreenId << ", " << closestGreenSize * ptVol
+					<< endl;
+		} else { // Did not match a red
+			snStats << blueCl.first << ", " << blueCl.second.size() * ptVol
+					<< ", , " << closestGreenDist
+					<< ", , , " << closestGreenId << ", "
+					<< closestGreenSize * ptVol << endl;
+		}
+	}
+
+	vector<uint32_t> unmatchedReds;
+	for (auto const & redCl : clusterClouds[chan::RED]) {
+		if (usedIds[chan::RED].count(redCl.first) < 1) {
+			unmatchedReds.push_back(redCl.first);
+			// Make sure the projection displays this ID
+			usedIds[chan::RED].insert(redCl.first);
+		}
+	}
+	if (unmatchedReds.size() > 0) {
+		std::ofstream unmatchedOut;
+		ss.str(""); ss.clear();
+		ss << boostSynNotchOutPath.string() << "/unmatchedRed.csv";
+		unmatchedOut.open(ss.str().c_str());
+		unmatchedOut << "Unmatched Red ID" << endl;
+		for (auto id : unmatchedReds) {
+			unmatchedOut << id << endl;
+		}
 	}
 
 	// Add cluster labels to projection
-	int fontFace = cv::FONT_HERSHEY_PLAIN;
-	int fontScale = 2;
+	int fontFace = cv::FONT_HERSHEY_COMPLEX_SMALL;
+	int fontScale = 1;
 	int fontThickness = 1;
 	for (int i = chan::NUM - 1; i >= 0; i--) {
 		for (auto const & clIt : clusterClouds[i]) {
