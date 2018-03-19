@@ -177,17 +177,21 @@ int main(const int argc, const char **argv) {
 	ss.str(""); ss.clear();
 	ss << boostSynNotchOutPath.string() << "/synNotchStats.csv";
 	snStats.open(ss.str().c_str());
-	snStats << "blue clusterId, blue volume, "
+	snStats << "blue clusterId, blue volume, integrated intensity, size,"
 			"closest red dist, closest green dist, "
-			"closest red id, closest red volume,"
+			"closest red id, volume, integrated intensity, size,"
 			"closest green id, "
-			"closest green volume" << endl;
+			"volume, integrated intensity, size" << endl;
 	set<uint32_t> usedIds[chan::NUM];
 	double ptVol = scopeProps.pixelDepth * scopeProps.pixelHeight * scopeProps.pixelWidth;
 	for (auto const & blueCl : clusterClouds[chan::BLUE]) {
 		double closestRedDist = -1;
 		uint32_t closestRedId;
 		uint32_t closestRedSize;
+		uint32_t blueIntensity = 0;
+		for (auto const & pt : blueCl.second.points) {
+			blueIntensity += pt.b;
+		}
 		for (auto const & redCl : clusterClouds[chan::RED]) {
 			double rbDist = intraCloudDistance(redCl.second, blueCl.second);
 			if (closestRedDist == -1 || rbDist < closestRedDist) {
@@ -207,21 +211,35 @@ int main(const int argc, const char **argv) {
 				closestGreenSize = greenCl.second.size();
 			}
 		}
+		uint32_t greenIntensity = 0;
+		for (auto const & pt : clusterClouds[chan::GREEN][closestGreenId].points) {
+			greenIntensity += pt.g;
+		}
 		usedIds[chan::GREEN].insert(closestGreenId);
 		usedIds[chan::BLUE].insert(blueCl.first);
 		if (closestRedDist < 1) { // Matched a Red
+			uint32_t redIntensity = 0;
+			for (auto const & pt : clusterClouds[chan::RED][closestRedId].points) {
+				redIntensity += pt.g;
+			}
 			usedIds[chan::RED].insert(closestRedId);
 			int blueSize = blueCl.second.size();
 			snStats << blueCl.first << ", " << blueSize * ptVol << ", "
+					<< blueIntensity << ", " << blueCl.second.size() << ", "
 					<< closestRedDist << ", " << closestGreenDist << ", "
 					<< closestRedId << ", " << closestRedSize * ptVol << ", "
-					<< closestGreenId << ", " << closestGreenSize * ptVol
+					<< redIntensity << ", " << closestRedSize << ", "
+					<< closestGreenId << ", " << closestGreenSize * ptVol << ", "
+					<< greenIntensity << ", " << closestGreenSize
 					<< endl;
 		} else { // Did not match a red
-			snStats << blueCl.first << ", " << blueCl.second.size() * ptVol
+			snStats << blueCl.first << ", " << blueCl.second.size() * ptVol << ", "
+					<< blueIntensity << ", " << blueCl.second.size() << ", "
 					<< ", , " << closestGreenDist
-					<< ", , , " << closestGreenId << ", "
-					<< closestGreenSize * ptVol << endl;
+					<< ", , , , " << closestGreenId << ", "
+					<< closestGreenSize * ptVol  << ", "
+					<< greenIntensity << ", " << closestGreenSize
+					<< endl;
 		}
 	}
 
