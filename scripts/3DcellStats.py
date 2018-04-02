@@ -308,11 +308,8 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
         for line in points:
             resultsFile.write("%f %f %f %d %d %d\n" % (line[0], line[1], line[2], line[3], line[4], line[5]))
         resultsFile.close()
-    
-        if (numPoints > 0):
-            compute3DStats(cfg, wellPath, chanName, cloudName)
-        else:
-            print "Skipping segmentation, because cloud has no points!"
+
+        compute3DStats(cfg, wellPath, chanName, cloudName)
 
     print ""
 
