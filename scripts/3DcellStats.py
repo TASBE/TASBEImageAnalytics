@@ -68,8 +68,6 @@ def main(cfg):
     maxT = dict()
     minT = dict()
     numZ = dict()
-    pngTimesteps = dict()
-    pngZSlices = dict()
 
     # Analyze image filenames to get different pieces of information
     # We care about a time, Z, channel, and the well name
