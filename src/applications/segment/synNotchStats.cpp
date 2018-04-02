@@ -177,11 +177,11 @@ int main(const int argc, const char **argv) {
 	ss.str(""); ss.clear();
 	ss << boostSynNotchOutPath.string() << "/synNotchStats.csv";
 	snStats.open(ss.str().c_str());
-	snStats << "blue clusterId, blue volume, integrated intensity, size,"
+	snStats << "blue clusterId, blue volume, blue integrated intensity, blue size,"
 			"closest red dist, closest green dist, "
-			"closest red id, volume, integrated intensity, size,"
+			"closest red id, red volume, red integrated intensity, red size,"
 			"closest green id, "
-			"volume, integrated intensity, size" << endl;
+			"green volume, green integrated intensity, green size" << endl;
 	set<uint32_t> usedIds[chan::NUM];
 	double ptVol = scopeProps.pixelDepth * scopeProps.pixelHeight * scopeProps.pixelWidth;
 	for (auto const & blueCl : clusterClouds[chan::BLUE]) {
@@ -220,7 +220,7 @@ int main(const int argc, const char **argv) {
 		if (closestRedDist < 1) { // Matched a Red
 			uint32_t redIntensity = 0;
 			for (auto const & pt : clusterClouds[chan::RED][closestRedId].points) {
-				redIntensity += pt.g;
+				redIntensity += pt.r;
 			}
 			usedIds[chan::RED].insert(closestRedId);
 			int blueSize = blueCl.second.size();
@@ -235,7 +235,7 @@ int main(const int argc, const char **argv) {
 		} else { // Did not match a red
 			snStats << blueCl.first << ", " << blueCl.second.size() * ptVol << ", "
 					<< blueIntensity << ", " << blueCl.second.size() << ", "
-					<< ", , " << closestGreenDist
+					<< ", " << closestGreenDist
 					<< ", , , , " << closestGreenId << ", "
 					<< closestGreenSize * ptVol  << ", "
 					<< greenIntensity << ", " << closestGreenSize
