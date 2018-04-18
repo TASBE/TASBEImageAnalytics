@@ -71,6 +71,7 @@ lowerRightExclusionY  = "lowerRightExclusionY"
 upperLeftExclusionX  = "upperLeftExclusionX"
 upperLeftExclusionY  = "upperLeftExclusionY"
 maxThreshRange = "maxThreshRange"
+thresholdMethod = "thresholdMethod"
 
 CYTATION_METADATA_TIFF_TAG = 270
 
@@ -346,6 +347,8 @@ class ConfigParams:
                 self.params[upperLeftExclusionY] = int(cfgParser.get(cfgSection, option))
             elif option == maxThreshRange.lower():
                 self.params[maxThreshRange] = int(cfgParser.get(cfgSection, option))
+            elif option == thresholdMethod.lower():
+                self.params[thresholdMethod] = cfgParser.get(cfgSection, option)
             elif option == noZInFile.lower():
                 self.params[noZInFile]  = cfgParser.get(cfgSection, option) == "True"
             elif option == noTInFile.lower():

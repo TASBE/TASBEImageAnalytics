@@ -120,7 +120,11 @@ def getGrayScaleImage(currIP, c, z, t, chanName, cfg, wellPath, dbgOutDesc):
 
     upperThreshImg = currIP.duplicate()
 
-    currIP.getProcessor().setAutoThreshold("Default", darkBackground, ImageProcessor.NO_LUT_UPDATE)
+    threshMethod = "Default"
+    if cfg.hasValue(ELMConfig.thresholdMethod):
+        threshMethod = cfg.getValue(ELMConfig.thresholdMethod)
+
+    currIP.getProcessor().setAutoThreshold(threshMethod, darkBackground, ImageProcessor.NO_LUT_UPDATE)
     threshRange = currIP.getProcessor().getMaxThreshold() - currIP.getProcessor().getMinThreshold()
     if currIP.getType() != ImagePlus.GRAY8:
         print "\tChannel " + chanName + " is not GRAY8, instead type is %d" % currIP.getType()
