@@ -208,7 +208,7 @@ def main(cfg):
     metadataDir = os.path.join(cfg.getValue(ELMConfig.inputDir), "MetaData")
     metadataExists = True
     if not os.path.exists(metadataDir) and not cfg.isCytation and not (cfg.getValue(ELMConfig.imgType) == "png"):
-        print "No MetaData directory in input dir! Can't read Leica properties!"
+        print("No MetaData directory in input dir! Can't read Leica properties!")
         metadataExists = False;
     elif cfg.isCytation or (cfg.getValue(ELMConfig.imgType) == "png"):
         metadataExists = False;
