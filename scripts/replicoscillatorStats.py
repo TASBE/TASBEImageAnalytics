@@ -229,6 +229,7 @@ def main(cfg):
         metadataExists = False;
 
     # Process each well
+    trackDat = {}
     for wellName in uniqueNames:
         # Check to see if we should ignore this well
         if cfg.getValue(ELMConfig.wellNames):
@@ -279,12 +280,42 @@ def main(cfg):
         print ("Beginning well " + wellName + "...")
         cfg.printCfg()
         start = time.time()
-        processDataset(cfg, wellName, dsImgFiles)
+        trackDat[wellName] = processDataset(cfg, wellName, dsImgFiles)
         end = time.time()
         print("Processed well " + wellName + " in " + str(end - start) + " s")
         print("\n\n")
 
-
+    # Create output file
+    trackOut = os.path.join(cfg.getValue(ELMConfig.outputDir), "AlltrackSummary.csv")
+    trackFile = open(trackOut, 'w')
+    date = os.path.basename(cfg.getValue(ELMConfig.outputDir))
+    # Fetch the track feature from the feature model.
+    trackFile.write('Date, Wellname, Num Tracks, Mean Duration, Max Duration, Min Duration, Mean Avg Total Intensity, Max Avg Total Intensity, Min Avg Total Intensity \n')
+    for wellName in trackDat:
+        tracks = trackDat[wellName]
+        numTracks = len(tracks);
+        durations = [sys.maxint,0,0]
+        avgTotalItensities = [sys.maxint,0,0]
+        for tId in tracks:
+            dur = float(tracks[tId][1])
+            avgTotalInt = float(tracks[tId][2])
+            if (dur < durations[0]):
+                durations[0] = dur
+            if (dur > durations[1]):
+                durations[1] = dur
+            durations[2] += dur
+            
+            if (avgTotalInt < avgTotalItensities[0]):
+                avgTotalItensities[0] = avgTotalInt
+            if (avgTotalInt > avgTotalItensities[1]):
+                avgTotalItensities[1] = avgTotalInt
+            avgTotalItensities[2] += avgTotalInt    
+            
+        durations[2] /= numTracks
+        avgTotalItensities[2] /= numTracks    
+        dat = [date, wellName, str(numTracks), str(durations[2]), str(durations[1]), str(durations[0]), str(avgTotalItensities[2]), str(avgTotalItensities[1]), str(avgTotalItensities[0])]
+        trackFile.write(','.join(dat) + '\n')
+    trackFile.close()
 
 ####
 #
@@ -327,8 +358,8 @@ def processDataset(cfg, datasetName, imgFiles):
         quit(-1)
 
     # Process images
-    processImages(cfg, datasetName, datasetPath, imgFileCats)
-
+    trackDat = processImages(cfg, datasetName, datasetPath, imgFileCats)
+    return trackDat
 
 ####
 #
@@ -528,45 +559,85 @@ def processImages(cfg, wellName, wellPath, images):
         coa = CaptureOverlayAction(None)
         coa.execute(trackmate)
         
+        imp.hide()
+        
         IJ.saveAs('avi', os.path.join(wellPath, chanName + "_out.avi"))
         
         # Write output for tracks
         numTracks = model.getTrackModel().trackIDs(True).size();
         print "Writing track data for " + str(numTracks) + " tracks."
+        trackDat = {} 
         for tId in model.getTrackModel().trackIDs(True):
-            # Ensure tracks dir exists
+            track = model.getTrackModel().trackSpots(tId)
+            
+            # Ensure track spots dir exists
+            trackOut = os.path.join(wellPath, chanName + "_track_spots")
+            if not os.path.exists(trackOut):
+                os.makedirs(trackOut)
+            # Create output file
+            trackOut = os.path.join(trackOut, "track_" + str(tId) + ".csv")
+            trackFile = open(trackOut, 'w')
+
+            # Write Header
+            header = 'Frame, '
+            for feature in track.toArray()[0].getFeatures().keySet():
+                if feature == 'Frame':
+                    continue;
+                header += feature + ", "
+            header = header[0:len(header) - 2]
+            header += '\n'
+            trackFile.write(header)
+            # Write spot data
+            avgTotalIntensity = 0
+            for spot in track:
+                #print spot.echo()
+                data = [str(spot.getFeature('FRAME'))]
+                for feature in spot.getFeatures():
+                    if feature == 'Frame':
+                        continue;
+                    elif feature == 'TOTAL_INTENSITY':
+                        avgTotalIntensity += spot.getFeature(feature)
+                    data.append(str(spot.getFeature(feature)))
+                trackFile.write(','.join(data) + '\n')
+            trackFile.close()
+            avgTotalIntensity /= len(track)
+
+            # Write out track stats
+            # Make sure dir exists            
             trackOut = os.path.join(wellPath, chanName + "_tracks")
             if not os.path.exists(trackOut):
                 os.makedirs(trackOut)
             # Create output file
             trackOut = os.path.join(trackOut, "track_" + str(tId) + ".csv")
             trackFile = open(trackOut, 'w')
-            
             # Fetch the track feature from the feature model.
-            v = fm.getTrackFeature(tId, 'TRACK_MEAN_SPEED')
+            header = ''
+            for featName in fm.getTrackFeatureNames():
+                header += featName + ", "
+            header = header[0:len(header) - 2]
+            header += '\n'
+            trackFile.write(header)
             
-            trackFile.writelines('Track ' + str(tId) + ', mean velocity:, ' + str(v) + ', ' + model.getSpaceUnits() + '/' + model.getTimeUnits() + '\n')
-            trackFile.writelines('Frame, T, X, Y, Z, Quality, SNR, Mean Intensity, Total Intensity' + '\n')   
-            track = model.getTrackModel().trackSpots(tId)
-            
-            # Write spot data
-            for spot in track:
-                # Fetch spot features directly from spot. 
-                x=spot.getFeature('POSITION_X')
-                y=spot.getFeature('POSITION_Y')
-                z=spot.getFeature('POSITION_Z')
-                f=spot.getFeature('FRAME')
-                t=spot.getFeature('POSITION_T')
-                q=spot.getFeature('QUALITY')
-                snr=spot.getFeature('SNR') 
-                mean=spot.getFeature('MEAN_INTENSITY')
-                total=spot.getFeature('TOTAL_INTENSITY')
-                #print spot.echo()
-                data = [str(f), str(t), str(x), str(y), str(z), str(q), str(snr), str(mean), str(total)];
-                trackFile.write(','.join(data) + '\n')
-            
+            features = ''
+            for featName in fm.getTrackFeatureNames():
+                features += str(fm.getTrackFeature(tId, featName)) + ', '
+            features = features[0:len(features) - 2]
+            features += '\n'
+            trackFile.write(features)
+            trackFile.write('\n')
             trackFile.close()
+            
+            trackDat[tId] = [str(tId), str(fm.getTrackFeature(tId, 'TRACK_DURATION')), str(avgTotalIntensity), str(fm.getTrackFeature(tId, 'TRACK_START')), str(fm.getTrackFeature(tId, 'TRACK_STOP'))]
 
+        # Create output file
+        trackOut = os.path.join(wellPath, chanName + "_trackSummary.csv")
+        trackFile = open(trackOut, 'w')
+        # Fetch the track feature from the feature model.
+        trackFile.write('Track Id, Duration, Avg Total Intensity, Start Frame, Stop Frame \n')
+        for track in trackDat:
+            trackFile.write(','.join(trackDat[track]) + '\n')
+        trackFile.close()
+    return trackDat
 
 ####
 #
@@ -581,7 +652,9 @@ def processImages(cfg, wellName, wellPath, images):
 # They could be defined if running from ImageJ directly
 try:
     cfgPath
+    imageJ = True
 except NameError:
+    imageJ = False
     argc = len(sys.argv) - 1
     if not argc == 1:
         print "Expected 1 argument, received " + str(argc) + "!"
@@ -603,4 +676,8 @@ main(cfg)
 end = time.time()
 
 print("Processed all images in " + str((end - start) / 60) + "m ("  + str(end - start) + "s)")
-exit(0)
+if imageJ:
+    IJ.run("Quit")
+else:
+    exit(0)
+
