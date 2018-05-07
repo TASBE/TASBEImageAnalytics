@@ -14,25 +14,13 @@ start=`date +%s`
 
 export CLASSPATH=$PWD:$PWD/scripts:${CLASSPATH}
 
-## DAPG
-echo "DAPG"
+find /media/nwalczak/XFS_Test/ResilioSyncLN/Resilio/2018_04_02_CHO-Replicoscillator_Image_Data -name \*.ini &> /tmp/inis
 
-# 2018-04-02
-echo "2018-04-02"
-${FIJI_PATH}/ImageJ-linux64 --ij2 --headless --run scripts/replicoscillatorStats.py cfgPath=\"/media/nwalczak/XFS_Test/Resilio\ Sync/Resilio/2018_04_02_CHO-Replicoscillator_Image_Data/DAPG/DAPG_04-02.ini\"
-checkFailure "2018-04-02"
-
-# 2018-04-03
-echo "2018-04-03"
-${FIJI_PATH}/ImageJ-linux64 --ij2 --headless --run scripts/replicoscillatorStats.py cfgPath=\"/media/nwalczak/XFS_Test/Resilio\ Sync/Resilio/2018_04_02_CHO-Replicoscillator_Image_Data/DAPG/DAPG_04-03.ini\"
-checkFailure "2018-04-03"
-
-# 2018-04-04
-echo "2018-04-04"
-${FIJI_PATH}/ImageJ-linux64 --ij2 --headless --run scripts/replicoscillatorStats.py cfgPath=\"/media/nwalczak/XFS_Test/Resilio\ Sync/Resilio/2018_04_02_CHO-Replicoscillator_Image_Data/DAPG/DAPG_04-04.ini\"
-checkFailure "2018-04-04"
-
-
+while read line;
+  do
+    ${FIJI_PATH}/ImageJ-linux64 --ij2 --run scripts/replicoscillatorStats.py cfgPath=\"${line}\"
+    checkFailure $(basename $line)
+done < /tmp/inis
 
 
 end=`date +%s`
