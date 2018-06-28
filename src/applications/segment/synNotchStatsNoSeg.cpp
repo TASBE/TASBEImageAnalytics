@@ -59,6 +59,8 @@ string chanNames[3] = {"Red", "Green", "Blue"};
 
 enum DistTypes {NN = 0, AVG = 1, EXP = 2};
 
+string distDesc[3] = {"nn", "avg", "exp"};
+
 int NUM_COLORS = 8;
 // Red, Green, Blue,
 Vec3b colors[8] = {
@@ -129,11 +131,11 @@ int main(const int argc, const char **argv) {
 	int distType = AVG;
 	if (argc >= 5) {
 		string dt = argv[4];
-		if (boost::iequals(dt, "AVG")) {
+		if (boost::iequals(dt, distDesc[AVG])) {
 			distType = AVG;
-		} else if (boost::iequals(dt, "NN")) {
+		} else if (boost::iequals(dt, distDesc[NN])) {
 			distType = NN;
-		} else if (boost::iequals(dt, "EXP")) {
+		} else if (boost::iequals(dt, distDesc[EXP])) {
 			distType = EXP;
 		} else {
 			cerr << "Unexpected distance type! Value: " << dt << endl;
@@ -318,7 +320,7 @@ int main(const int argc, const char **argv) {
 
 	ofstream csvOut;
 	ss.str(""); ss.clear();
-	ss << boostSynNotchOutPath.string() << "/distances.csv";
+	ss << boostSynNotchOutPath.string() << "/distances_" << distDesc[distType] << ".csv";
 	csvOut.open(ss.str());
 	csvOut << cv::format(blueDists, cv::Formatter::FMT_CSV) << std::endl;
 	csvOut.close();
