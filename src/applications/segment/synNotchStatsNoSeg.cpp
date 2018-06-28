@@ -177,10 +177,12 @@ int main(const int argc, const char **argv) {
 		int origPts = chanClouds[i]->size();
 
 		RadiusOutlierRemoval<PointT> outlierRemove;
-		outlierRemove.setInputCloud(chanClouds[i]);
-		outlierRemove.setRadiusSearch(10);
-		outlierRemove.setMinNeighborsInRadius (3);
-		outlierRemove.filter (*chanClouds[i]);
+		if (chanClouds[i]->size() > 0) {
+			outlierRemove.setInputCloud(chanClouds[i]);
+			outlierRemove.setRadiusSearch(10);
+			outlierRemove.setMinNeighborsInRadius (3);
+			outlierRemove.filter (*chanClouds[i]);
+		}
 
 		cout << chanNames[i] << " cloud path: " << chanParams[i].getValue(SegParams::INPUT_CLOUD) << endl;
 		cout << chanNames[i] << " cloud orig num pts: " << origPts << endl;
