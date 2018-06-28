@@ -251,15 +251,15 @@ int main(const int argc, const char **argv) {
 	search::KdTree<PointT>::Ptr redSearch(new search::KdTree<PointT>);
 	search::KdTree<PointT>::Ptr greenSearch(new search::KdTree<PointT>);
 	if (chanClouds[chan::RED]->size() > 0) {
-	redSearch->setInputCloud(chanClouds[chan::RED]);
+		redSearch->setInputCloud(chanClouds[chan::RED]);
 	} else {
-		cerr << "Found red cloud with no points!" << endl;
+		cerr << "\t\tFound red cloud with no points!" << endl;
 	}
 
 	if (chanClouds[chan::GREEN]->size() > 0) {
 		greenSearch->setInputCloud(chanClouds[chan::GREEN]);
 	} else {
-		cerr << "Found green cloud with no points!" << endl;
+		cerr << "\t\tFound green cloud with no points!" << endl;
 	}
 	Mat blueDists(chanClouds[chan::BLUE]->size(), 2, CV_64FC1, Scalar(0));
 	int numNeighbors = 5;
