@@ -72,6 +72,7 @@ upperLeftExclusionX  = "upperLeftExclusionX"
 upperLeftExclusionY  = "upperLeftExclusionY"
 maxThreshRange = "maxThreshRange"
 thresholdMethod = "thresholdMethod"
+defaultThreshold = "defaultThreshold" # if set, use this value to threshold if the maxThreshRange is hit
 imageThreshold = "imageThreshold"
 
 CYTATION_METADATA_TIFF_TAG = 270
@@ -350,6 +351,8 @@ class ConfigParams:
                 self.params[maxThreshRange] = int(cfgParser.get(cfgSection, option))
             elif option == thresholdMethod.lower():
                 self.params[thresholdMethod] = cfgParser.get(cfgSection, option)
+            elif option == defaultThreshold.lower():
+                self.params[defaultThreshold] = int(cfgParser.get(cfgSection, option))
             elif option == imageThreshold.lower():
                 self.params[imageThreshold] = int(cfgParser.get(cfgSection, option))
             elif option == noZInFile.lower():

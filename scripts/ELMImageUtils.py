@@ -124,9 +124,16 @@ def getGrayScaleImage(currIP, c, z, t, chanName, cfg, wellPath, dbgOutDesc):
         if currIP.getType() != ImagePlus.GRAY8:
             print "\tChannel " + chanName + " is not GRAY8, instead type is %d" % currIP.getType()
         if threshRange > cfg.getValue(ELMConfig.maxThreshRange):
-            print "\t\tZ = " + str(z) + ", T = " + str(t) +  ", chan " + chanName + ": Ignored Objects due to threshold range! minThresh: " + str(currIP.getProcessor().getMinThreshold()) + ", maxThresh: " + str(currIP.getProcessor().getMaxThreshold())
-            currIP.close()
-            return None
+            if (cfg.hasValue(ELMConfig.defaultThreshold)):
+                thresh = cfg.getValue(ELMConfig.defaultThreshold)
+                if (darkBackground):
+                    currIP.getProcessor().setThreshold(thresh, 255, ImageProcessor.NO_LUT_UPDATE)
+                else:
+                    currIP.getProcessor().setThreshold(0, thresh, ImageProcessor.NO_LUT_UPDATE)  
+            else:
+                print "\t\tZ = " + str(z) + ", T = " + str(t) +  ", chan " + chanName + ": Ignored Objects due to threshold range! minThresh: " + str(currIP.getProcessor().getMinThreshold()) + ", maxThresh: " + str(currIP.getProcessor().getMaxThreshold())
+                currIP.close()
+                return None
 
     IJ.run(currIP, "Convert to Mask", "")
     
