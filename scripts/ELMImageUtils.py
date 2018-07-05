@@ -36,12 +36,6 @@ def getGrayScaleImage(currIP, c, z, t, chanName, cfg, wellPath, dbgOutDesc):
         return None
     elif imgType == ImagePlus.COLOR_RGB or imgType == ImagePlus.COLOR_256:
         if (chanName == ELMConfig.BRIGHTFIELD):
-            # Clear the Exclusion zone, so it doesn't mess with  thresholding
-            imgProc = currIP.getProcessor();
-            imgProc.setColor(Color(128,128,128))
-            imgProc.fillRect(lrExclusionX, lrExclusionY, currIP.getWidth(), currIP.getHeight())
-            imgProc.fillRect(0, 0, ulExclusionX, ulExclusionY)
-    
             toGray = ImageConverter(currIP)
             toGray.convertToGray8()
             if cfg.params[ELMConfig.imgType] == "png":
@@ -95,15 +89,8 @@ def getGrayScaleImage(currIP, c, z, t, chanName, cfg, wellPath, dbgOutDesc):
                 darkBackground = True
             else:
                 darkBackground = False
-            fillColor = Color(128,128,128)
         else:
             darkBackground = True
-            fillColor = Color(0,0,0)
-        # Clear the Exclusion zone, so it doesn't mess with  thresholding
-        imgProc = currIP.getProcessor();
-        imgProc.setColor(fillColor)
-        imgProc.fillRect(lrExclusionX, lrExclusionY, currIP.getWidth(), currIP.getHeight())
-        imgProc.fillRect(0, 0, ulExclusionX, ulExclusionY)
         
         if not imgType == ImagePlus.GRAY8: 
             toGray = ImageConverter(currIP)
@@ -142,6 +129,12 @@ def getGrayScaleImage(currIP, c, z, t, chanName, cfg, wellPath, dbgOutDesc):
             return None
 
     IJ.run(currIP, "Convert to Mask", "")
+    
+    # Clear out exclusion zones
+    imgProc = currIP.getProcessor();
+    imgProc.fillRect(lrExclusionX, lrExclusionY, currIP.getWidth(), currIP.getHeight())
+    imgProc.fillRect(0, 0, ulExclusionX, ulExclusionY)
+    
     IJ.run(currIP, "Close-", "")
     
     # Brightfield has an additional thresholding step
