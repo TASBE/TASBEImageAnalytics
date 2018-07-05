@@ -287,6 +287,7 @@ def main(cfg):
 def processDataset(cfg, datasetName, imgFiles):
     datasetPath = os.path.join(cfg.getValue(ELMConfig.outputDir), datasetName)
 
+    startTime = time.time()
     # Categorize images based on c/z/t
     imgFileCats = [[[[] for t in range(cfg.getValue(ELMConfig.numT))] for z in range(cfg.getValue(ELMConfig.numZ))] for c in range(cfg.getValue(ELMConfig.numChannels))]
     if cfg.params[ELMConfig.imgType] == "png":
@@ -320,9 +321,12 @@ def processDataset(cfg, datasetName, imgFiles):
     if missingImage:
         quit(-1)
 
+    fileTime = time.time()
     # Process images
     stats = processImages(cfg, datasetName, datasetPath, imgFileCats)
 
+    statsTime = time.time()
+    
     outputChans = [];
     for chan in cfg.getValue(ELMConfig.chanLabel):
         if not chan in cfg.params[ELMConfig.chansToSkip] and not chan == ELMConfig.BRIGHTFIELD:
@@ -413,6 +417,9 @@ def processDataset(cfg, datasetName, imgFiles):
 
     resultsFile.write(resultsString)
     resultsFile.close()
+    
+    outputTime = time.time();
+    print("Well times: fileTime: %f, statsTime: %f, outputTime: %f" % (fileTime - startTime, statsTime-fileTime, outputTime - statsTime))
     return resultsString
 
 
@@ -423,8 +430,9 @@ def processDataset(cfg, datasetName, imgFiles):
 #
 ####
 def processImages(cfg, wellName, wellPath, images):
-    stats = [[[dict() for t in range(cfg.getValue(ELMConfig.numT))] for z in range(cfg.getValue(ELMConfig.numZ))] for c in range(cfg.getValue(ELMConfig.numChannels))]
 
+    stats = [[[dict() for t in range(cfg.getValue(ELMConfig.numT))] for z in range(cfg.getValue(ELMConfig.numZ))] for c in range(cfg.getValue(ELMConfig.numChannels))]
+    times = {}
     for c in range(0, cfg.getValue(ELMConfig.numChannels)):
         chanStr = 'ch%(channel)02d' % {"channel" : c};
         chanName = cfg.getValue(ELMConfig.chanLabel)[c]
@@ -482,12 +490,19 @@ def processImages(cfg, wellName, wellPath, images):
                     IJ.saveAs('png', os.path.join(outputPath, "Orig_" + dbgOutDesc +  ".png"))
 
                 # We need to get to a grayscale image, which will be done differently for different channels
+                startTime = time.time()
                 currIP = ELMImageUtils.getGrayScaleImage(currIP, c, z, t, chanName, cfg, outputPath, dbgOutDesc)
+                endTime = time.time()
+                if not 'grayscale' in times:
+                    times['grayscale'] = []
+                times['grayscale'].append(endTime-startTime)
 
                 if (not currIP):
                     resultsImage.close()
                     stats[c][z][t][ELMConfig.UM_AREA] = []
                     continue
+                
+                startTime = time.time()
                 # Create a table to store the results
                 table = ResultsTable()
                 # Create a hidden ROI manager, to store a ROI for each blob or cell
@@ -502,6 +517,10 @@ def processImages(cfg, wellName, wellPath, images):
                 if not pa.analyze(currIP):
                     print "There was a problem in analyzing", currIP
         
+                endTime = time.time()
+                if not 'pa' in times:
+                    times['pa'] = []
+                times['pa'].append(endTime-startTime)
                 #for i in range(0, roim.getCount()) :
                 #    r = roim.getRoi(i);
                 #    r.setColor(Color.red)
@@ -509,6 +528,8 @@ def processImages(cfg, wellName, wellPath, images):
                 
                 #outImg = pa.getOutputImage()
                 IJ.saveAs('png', os.path.join(outputPath, "Segmentation_" + dbgOutDesc + "_particles.png"))
+
+                startTime = time.time()
 
                 width = currIP.getWidth();
                 height = currIP.getHeight();
@@ -536,6 +557,12 @@ def processImages(cfg, wellName, wellPath, images):
                         currPix = currProcessor.getPixel(x,y);
                         if not currPix == 0x00000000:
                             overlayProcessor.putPixel(x, y, maskColor)
+                            
+                endTime = time.time()
+                if not 'overlay' in times:
+                    times['overlay'] = []
+                times['overlay'].append(endTime-startTime)
+                
                 WindowManager.setTempCurrentImage(overlayImage);
                 IJ.saveAs('png', os.path.join(outputPath, "Overlay_" + dbgOutDesc + "_particles.png"))
 
@@ -554,6 +581,11 @@ def processImages(cfg, wellName, wellPath, images):
                 currIP.close()
                 resultsImage.close()
 
+    timesAvg = {}
+    for key in times:
+        timeList = times[key]
+        timesAvg[key] = sum(timeList) / len(timeList);
+    print("processImage times " + str(timesAvg))
     return stats
 
 
