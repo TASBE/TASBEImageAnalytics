@@ -126,6 +126,7 @@ def getGrayScaleImage(currIP, c, z, t, chanName, cfg, wellPath, dbgOutDesc):
         if threshRange > cfg.getValue(ELMConfig.maxThreshRange):
             if (cfg.hasValue(ELMConfig.defaultThreshold)):
                 thresh = cfg.getValue(ELMConfig.defaultThreshold)
+                print "\t\tZ = " + str(z) + ", T = " + str(t) +  ", chan " + chanName + ": Using default threshold of " + str(thresh) + ", minThresh: " + str(currIP.getProcessor().getMinThreshold()) + ", maxThresh: " + str(currIP.getProcessor().getMaxThreshold())
                 if (darkBackground):
                     currIP.getProcessor().setThreshold(thresh, 255, ImageProcessor.NO_LUT_UPDATE)
                 else:
