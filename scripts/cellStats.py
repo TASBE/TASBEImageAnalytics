@@ -218,7 +218,7 @@ def main(cfg):
     for wellName in uniqueNames:
         # Check to see if we should ignore this well
         if cfg.getValue(ELMConfig.wellNames):
-            if not wellName in cfg.getValue(ELMConfig.wellNames):
+            if not any(wellName in name for name in cfg.getValue(ELMConfig.wellNames)):
                 continue;
 
         # Get files in this well
