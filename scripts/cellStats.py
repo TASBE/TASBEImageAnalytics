@@ -1,5 +1,5 @@
 from ij import IJ, ImagePlus, WindowManager
-from ij.process import ImageConverter
+from ij.process import ImageConverter, FloodFiller
 from ij.measure import ResultsTable
 
 from ij.plugin import ChannelSplitter
@@ -526,8 +526,61 @@ def processImages(cfg, wellName, wellPath, images):
                 #    r.setColor(Color.red)
                 #    r.setStrokeWidth(2)
                 
+                # The measured areas are listed in the first column of the results table, as a float array:
+                newAreas = []
+                maxArea = 0
+                if table.getColumn(ResultsTable.AREA):
+                    for pixArea in table.getColumn(ResultsTable.AREA):
+                        a = pixArea * cfg.getValue(ELMConfig.pixelHeight) * cfg.getValue(ELMConfig.pixelWidth)
+                        newAreas.append(a)
+                        if (a > maxArea):
+                            maxArea = a
+                        
+                # Threshold areas
+                idxToRemove = set()
+                if cfg.hasValue(ELMConfig.areaMaxPercentThreshold):
+                    areaPercentThresh = cfg.getValue(ELMConfig.areaMaxPercentThreshold)
+                    for i in range(0,len(newAreas)):
+                        if newAreas[i] < (areaPercentThresh * maxArea):
+                            idxToRemove.add(i)
+                if cfg.hasValue(ELMConfig.areaAbsoluteThreshold):
+                    areaAbsoluteThresh = cfg.getValue(ELMConfig.areaAbsoluteThreshold)
+                    for i in range(0,len(newAreas)):
+                        if newAreas[i] < areaAbsoluteThresh:
+                            idxToRemove.add(i)
+
+                for i in sorted(idxToRemove, reverse=True):
+                    del newAreas[i]
+                
+                stats[c][z][t][ELMConfig.UM_AREA] = newAreas
+                centroidX = []
+                centroidY = []
+                # Store all of the other data
+                for col in range(0,table.getLastColumn()):
+                    newData = table.getColumn(col)
+                    if not newData is None:
+                        if col == ResultsTable.X_CENTROID:
+                            for idx in idxToRemove:
+                                centroidX.append(newData[idx])
+                        if col == ResultsTable.Y_CENTROID:
+                            for idx in idxToRemove:
+                                centroidY.append(newData[idx])
+                        for i in sorted(idxToRemove, reverse=True):
+                            del newData[i]
+                    stats[c][z][t][table.getColumnHeading(col)] = newData
+
+                # Remove the segmentation masks for the objects removed
+                ff = FloodFiller(currIP.getProcessor())
+                currIP.getProcessor().setValue(0)
+                calib = resultsImage.getCalibration()
+                for i in range(0, len(centroidX)):
+                    x = int(calib.getRawX(centroidX[i]))
+                    y = int(calib.getRawY(centroidY[i]))
+                    ff.fill8(x,y)
+                    
                 #outImg = pa.getOutputImage()
                 IJ.saveAs('png', os.path.join(outputPath, "Segmentation_" + dbgOutDesc + "_particles.png"))
+                
 
                 startTime = time.time()
 
@@ -565,17 +618,6 @@ def processImages(cfg, wellName, wellPath, images):
                 
                 WindowManager.setTempCurrentImage(overlayImage);
                 IJ.saveAs('png', os.path.join(outputPath, "Overlay_" + dbgOutDesc + "_particles.png"))
-
-                # The measured areas are listed in the first column of the results table, as a float array:
-                newAreas = []
-                if table.getColumn(ResultsTable.AREA):
-                    for pixArea in table.getColumn(ResultsTable.AREA):
-                        newAreas.append(pixArea * cfg.getValue(ELMConfig.pixelHeight) * cfg.getValue(ELMConfig.pixelWidth))
-                stats[c][z][t][ELMConfig.UM_AREA] = newAreas
-
-                # Store all of the other data
-                for col in range(0,table.getLastColumn()):
-                    stats[c][z][t][table.getColumnHeading(col)] = table.getColumn(col)
 
                 #currIP.hide()
                 currIP.close()

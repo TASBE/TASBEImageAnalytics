@@ -74,6 +74,8 @@ maxThreshRange = "maxThreshRange"
 thresholdMethod = "thresholdMethod"
 defaultThreshold = "defaultThreshold" # if set, use this value to threshold if the maxThreshRange is hit
 imageThreshold = "imageThreshold"
+areaMaxPercentThreshold = "areaMaxPercentThreshold" # Remove blobs with area < areaMaxPercentThreshold * maxArea
+areaAbsoluteThreshold = "areaAbsoluteThreshold" # Remove blobs with area < areaAbsoluteThreshold
 
 CYTATION_METADATA_TIFF_TAG = 270
 
@@ -355,6 +357,10 @@ class ConfigParams:
                 self.params[defaultThreshold] = int(cfgParser.get(cfgSection, option))
             elif option == imageThreshold.lower():
                 self.params[imageThreshold] = int(cfgParser.get(cfgSection, option))
+            elif option == areaMaxPercentThreshold.lower():
+                self.params[areaMaxPercentThreshold] = float(cfgParser.get(cfgSection, option))
+            elif option == areaAbsoluteThreshold.lower():
+                self.params[areaAbsoluteThreshold] = float(cfgParser.get(cfgSection, option))
             elif option == noZInFile.lower():
                 self.params[noZInFile]  = cfgParser.get(cfgSection, option) == "True"
             elif option == noTInFile.lower():
