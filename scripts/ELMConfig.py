@@ -76,6 +76,8 @@ defaultThreshold = "defaultThreshold" # if set, use this value to threshold if t
 imageThreshold = "imageThreshold"
 areaMaxPercentThreshold = "areaMaxPercentThreshold" # Remove blobs with area < areaMaxPercentThreshold * maxArea
 areaAbsoluteThreshold = "areaAbsoluteThreshold" # Remove blobs with area < areaAbsoluteThreshold
+lutPath = "lutPath"
+createSegMask = "createSegMask"
 
 CYTATION_METADATA_TIFF_TAG = 270
 
@@ -107,6 +109,7 @@ class ConfigParams:
         self.params[inputDir] = '';
         self.params[outputDir] = '';
         self.params[maxThreshRange] = 230
+        self.params[lutPath] = '/home/nwalczak/workspace/fiji/Fiji.app/luts/glasbey_on_dark.lut'
         # Determines what index the dataset name is within the tokenized filename
         #self.params[pixelHeight] = 1; # in micrometers
         #self.params[pixelWidth] = 1; # in micrometers
@@ -365,6 +368,8 @@ class ConfigParams:
                 self.params[noZInFile]  = cfgParser.get(cfgSection, option) == "True"
             elif option == noTInFile.lower():
                 self.params[noTInFile]  = cfgParser.get(cfgSection, option) == "True"
+            elif option == lutPath.lower():
+                self.params[lutPath]  = cfgParser.get(cfgSection, option)
             elif option == chansToSkip.lower():
                 toks = cfgParser.get(cfgSection, option).split(",")
                 self.params[chansToSkip] = []
@@ -389,6 +394,8 @@ class ConfigParams:
                     self.params[wellNames].append(t)
             elif option == debugOutput.lower():
                 self.params[debugOutput] = cfgParser.get(cfgSection, option) == "True"
+            elif option == createSegMask.lower():
+                self.params[createSegMask] = cfgParser.get(cfgSection, option) == "True"
             else:
                 print "Warning, unrecognized config option: " + option   
         
