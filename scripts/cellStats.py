@@ -2,7 +2,7 @@ from ij import IJ, ImagePlus, WindowManager
 from ij.process import ImageConverter, FloodFiller
 from ij.measure import ResultsTable
 
-from ij.plugin import ChannelSplitter
+from ij.plugin import ChannelSplitter, LutLoader
 from ij.plugin.filter import ParticleAnalyzer, Analyzer
 from ij.measure import Measurements
 
@@ -508,11 +508,15 @@ def processImages(cfg, wellName, wellPath, images):
                 # Create a hidden ROI manager, to store a ROI for each blob or cell
                 #roim = RoiManager(True)
                 # Create a ParticleAnalyzer
+                measurements = Measurements.AREA + Measurements.MEAN + Measurements.STD_DEV + Measurements.MIN_MAX + Measurements.CENTROID + Measurements.RECT + Measurements.ELLIPSE
                 paFlags = ParticleAnalyzer.IN_SITU_SHOW | ParticleAnalyzer.SHOW_MASKS | ParticleAnalyzer.CLEAR_WORKSHEET
-                pa = ParticleAnalyzer(paFlags, Measurements.ALL_STATS, table, minSize, Double.POSITIVE_INFINITY, minCircularity, 1.0)
+                pa = ParticleAnalyzer(paFlags, measurements, table, minSize, Double.POSITIVE_INFINITY, minCircularity, 1.0)
 
                 #pa.setHideOutputImage(True)
-
+                
+                # The Result image is copied when CurrIP can still have calibration from loading
+                # We want the output to be in terms of pixels, for ease of use, so adjust calibration
+                resultsImage.setCalibration(currIP.getCalibration())
                 Analyzer.setRedirectImage(resultsImage)
                 if not pa.analyze(currIP):
                     print "There was a problem in analyzing", currIP
@@ -555,6 +559,11 @@ def processImages(cfg, wellName, wellPath, images):
                 stats[c][z][t][ELMConfig.UM_AREA] = newAreas
                 centroidX = []
                 centroidY = []
+                roiX = []
+                roiY = []
+                roiWidth = []
+                roiHeight = []
+                rArea = []
                 # Store all of the other data
                 for col in range(0,table.getLastColumn()):
                     newData = table.getColumn(col)
@@ -565,21 +574,118 @@ def processImages(cfg, wellName, wellPath, images):
                         if col == ResultsTable.Y_CENTROID:
                             for idx in idxToRemove:
                                 centroidY.append(newData[idx])
+                        if col == ResultsTable.ROI_X:
+                            for idx in idxToRemove:
+                                roiX.append(int(newData[idx]))
+                        if col == ResultsTable.ROI_Y:
+                            for idx in idxToRemove:
+                                roiY.append(int(newData[idx]))
+                        if col == ResultsTable.ROI_WIDTH:
+                            for idx in idxToRemove:
+                                roiWidth.append(int(newData[idx]))
+                        if col == ResultsTable.ROI_HEIGHT:
+                            for idx in idxToRemove:
+                                roiHeight.append(int(newData[idx]))
+                        if col == ResultsTable.AREA:
+                            for idx in idxToRemove:
+                                rArea.append(newData[idx])
+                        
                         for i in sorted(idxToRemove, reverse=True):
                             del newData[i]
                     stats[c][z][t][table.getColumnHeading(col)] = newData
 
+                IJ.saveAs('png', os.path.join(outputPath, "PreFiltered_Segmentation_" + dbgOutDesc + "_particles.png"))
+
                 # Remove the segmentation masks for the objects removed
-                ff = FloodFiller(currIP.getProcessor())
+                currProcessor = currIP.getProcessor()
+                ff = FloodFiller(currProcessor)
                 currIP.getProcessor().setValue(0)
                 calib = resultsImage.getCalibration()
-                for i in range(0, len(centroidX)):
-                    x = int(calib.getRawX(centroidX[i]))
-                    y = int(calib.getRawY(centroidY[i]))
-                    ff.fill8(x,y)
+                sortedAreaIndices = [i[0] for i in sorted(enumerate(rArea), key=lambda x:x[1])]
+                for idx in range(0, len(sortedAreaIndices)):
+                    i = sortedAreaIndices[idx]
+                    centX = int(calib.getRawX(centroidX[i]))
+                    centY = int(calib.getRawY(centroidY[i]))
+
+                    # Since the centroid isn't guaranteed to be part of the blob
+                    # search around until an active pixel is found
+                    found = False
+                    halfWidth = min([roiHeight[i], roiWidth[i]])
+                    for offset in range(0,halfWidth):
+                        if found:
+                            break
+                        for x in range(centX-offset,centX+offset+1):
+                            if found:
+                                break
+                            for y in range(centY-offset,centY+offset+1):
+                                if not currProcessor.getPixel(x,y) == 0x0:
+                                    found = True
+                                    finalX = x
+                                    finalY = y
+                                    break
+                    if not found:
+                        print "\t\tZ = " + str(z) + ", T = " + str(t) +  ", chan " + chanName + ": ERROR: Never found active pixel for filtered blob, centroid: " + str(centX) + ", " + str(centY)
+                    else:
+                        currProcessor.setRoi(roiX[i], roiY[i], roiWidth[i], roiHeight[i])
+                        ff.fill8(finalX,finalY)
+                        #IJ.saveAs('png', os.path.join(outputPath, "Segmentation_" + dbgOutDesc + "_" + str(idx) + ".png"))
+                    
                     
                 #outImg = pa.getOutputImage()
                 IJ.saveAs('png', os.path.join(outputPath, "Segmentation_" + dbgOutDesc + "_particles.png"))
+                
+                if cfg.hasValue(ELMConfig.createSegMask) and cfg.getValue(ELMConfig.createSegMask) == True:
+                    # Create segmentation mask
+                    segMask = currIP.duplicate()
+                    segMask.setTitle("SegMask_" + dbgOutDesc)
+                    # Iterate by smallest area first
+                    #  We are more likely to correctly label small areas
+                    if len(newAreas) > 0:
+                        segProcessor = segMask.getProcessor()
+                        if (len(newAreas) > 255):
+                            segProcessor = segProcessor.convertToShort(True)
+                            segMask.setProcessor(segProcessor)
+                        ff = FloodFiller(segProcessor)
+                        sortedAreaIndices = [i[0] for i in sorted(enumerate(stats[c][z][t]['Area']), key=lambda x:x[1])]
+                        for idx in range(0, len(sortedAreaIndices)):
+                            row = sortedAreaIndices[idx]
+                            centX = int(stats[c][z][t]['X'][row])
+                            centY = int(stats[c][z][t]['Y'][row])
+                            roiX = int(stats[c][z][t]['BX'][row])
+                            roiY = int(stats[c][z][t]['BY'][row])
+                            roiWidth = int(stats[c][z][t]['Width'][row])
+                            roiHeight = int(stats[c][z][t]['Height'][row])
+                            # Since the centroid isn't guaranteed to be part of the blob
+                            # search around until an active pixel is found
+                            found = False
+                            for xOffset in range(0,roiWidth/2):
+                                if found:
+                                    break
+                                for yOffset in range(0, roiHeight/2):
+                                    if found:
+                                        break
+                                    for x in range(centX-xOffset,centX+xOffset+1):
+                                        if found:
+                                            break
+                                        for y in range(centY-yOffset,centY+yOffset+1):
+                                            # original image and this image for masked pixel
+                                            # By checking original image, we avoid confusion with a label of 255
+                                            if segProcessor.getPixel(x,y) == 255 and currProcessor.getPixel(x,y) == 255:
+                                                found = True
+                                                finalX = x
+                                                finalY = y
+                                                break
+                            if not found:
+                                print "\t\tZ = " + str(z) + ", T = " + str(t) +  ", chan " + chanName + ": ERROR: Never found active pixel for seg mask, centroid: " + str(centX) + ", " + str(centY)
+                            else:
+                                segProcessor.setRoi(roiX, roiY, roiWidth, roiHeight)
+                                segProcessor.setColor(row + 1)
+                                ff.fill8(finalX,finalY)
+                    
+                    lut = LutLoader.openLut(cfg.getValue(ELMConfig.lutPath))
+                    segMask.setLut(lut)
+                    WindowManager.setTempCurrentImage(segMask);
+                    IJ.saveAs('png', os.path.join(outputPath, "SegMask_" + dbgOutDesc + "_particles.png"))
                 
 
                 startTime = time.time()
