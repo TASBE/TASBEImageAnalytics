@@ -62,6 +62,7 @@ pixelHeight = "pixelHeight"
 pixelDepth = "pixelDepth"
 pixelWidth = "pixelWidth"
 wellNames = "wellNames"
+excludeWellNames = "excludeWellNames"
 debugOutput = "debugOutput"
 pcloudColorThresh = "pcloudColorThresh"
 pcloudExclusionX  = "pcloudExclusionX"
@@ -392,6 +393,11 @@ class ConfigParams:
                 self.params[wellNames] = []
                 for t in toks:
                     self.params[wellNames].append(t)
+            elif option == excludeWellNames.lower():
+                toks = cfgParser.get(cfgSection, option).split(",")
+                self.params[excludeWellNames] = []
+                for t in toks:
+                    self.params[excludeWellNames].append(t)
             elif option == debugOutput.lower():
                 self.params[debugOutput] = cfgParser.get(cfgSection, option) == "True"
             elif option == createSegMask.lower():
