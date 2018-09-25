@@ -562,10 +562,15 @@ def processImages(cfg, wellName, wellPath, images):
         coa = CaptureOverlayAction(None)
         coa.execute(trackmate)
         
-        imp.hide()
-        
         IJ.saveAs('avi', os.path.join(wellPath, chanName + "_out.avi"))
-        
+
+        imp.close()
+        displayer.clear()
+        displayer.getImp().hide()
+        displayer.getImp().close()
+        coa.getCapture().hide()
+        coa.getCapture().close()
+
         # Write output for tracks
         numTracks = model.getTrackModel().trackIDs(True).size();
         print "Writing track data for " + str(numTracks) + " tracks."
