@@ -24,6 +24,8 @@ import fiji.plugin.trackmate.tracking.TrackerKeys as TrackerKeys
 
 import os, glob, re, time, sys
 
+from java.awt import Color
+
 # I'm not certain why, but when run in ImageJ it doesn't seem to adhere to the CLASSPATH env variable
 # This ensures that CLASSPATH is explicitly on the module search path, which is required for ELMConfig to resolve
 for path in os.environ['CLASSPATH'].split(os.pathsep):
@@ -421,6 +423,11 @@ def processImages(cfg, wellName, wellPath, images):
         imp.setStack(imSeq)
         imp.setDimensions(1, 1, cfg.getValue(ELMConfig.numT))
         imp.setTitle(wellName + ", channel " + str(c))
+        
+        impColor = ImagePlus()
+        impColor.setStack(imColorSeq)
+        impColor.setDimensions(1, 1, cfg.getValue(ELMConfig.numT))
+        impColor.setTitle(wellName + ", channel " + str(c) + " (Color)")
 
         #----------------------------
         # Create the model object now
@@ -553,7 +560,7 @@ def processImages(cfg, wellName, wellPath, images):
                 spot.setName(str(tId))
         
         selectionModel = SelectionModel(model)
-        displayer =  HyperStackDisplayer(model, selectionModel, imp)
+        displayer =  HyperStackDisplayer(model, selectionModel, impColor)
         displayer.setDisplaySettings(TrackMateModelView.KEY_TRACK_COLORING, PerTrackFeatureColorGenerator(model, TrackIndexAnalyzer.TRACK_INDEX ))
         displayer.setDisplaySettings(TrackMateModelView.KEY_SPOT_COLORING, SpotColorGeneratorPerTrackFeature(model, TrackIndexAnalyzer.TRACK_INDEX ))
         displayer.setDisplaySettings(TrackMateModelView.KEY_DISPLAY_SPOT_NAMES, True)        
@@ -568,12 +575,14 @@ def processImages(cfg, wellName, wellPath, images):
         # The feature model, that stores edge and track features.
         fm = model.getFeatureModel()
         
+        trackmate.getSettings().imp = impColor
         coa = CaptureOverlayAction(None)
         coa.execute(trackmate)
         
         IJ.saveAs('avi', os.path.join(wellPath, chanName + "_out.avi"))
 
         imp.close()
+        impColor.close()
         displayer.clear()
         displayer.getImp().hide()
         displayer.getImp().close()
