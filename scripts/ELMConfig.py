@@ -79,6 +79,8 @@ areaMaxPercentThreshold = "areaMaxPercentThreshold" # Remove blobs with area < a
 areaAbsoluteThreshold = "areaAbsoluteThreshold" # Remove blobs with area < areaAbsoluteThreshold
 lutPath = "lutPath"
 createSegMask = "createSegMask"
+invertLut = "invertLut"
+thresholdFromWholeRange = "thresholdFromWholeRange"
 
 CYTATION_METADATA_TIFF_TAG = 270
 
@@ -402,6 +404,10 @@ class ConfigParams:
                 self.params[debugOutput] = cfgParser.get(cfgSection, option) == "True"
             elif option == createSegMask.lower():
                 self.params[createSegMask] = cfgParser.get(cfgSection, option) == "True"
+            elif option == invertLut.lower():
+                self.params[invertLut] = cfgParser.get(cfgSection, option) == "True"
+            elif option == thresholdFromWholeRange.lower():
+                self.params[thresholdFromWholeRange] = cfgParser.get(cfgSection, option) == "True"
             else:
                 print "Warning, unrecognized config option: " + option   
         

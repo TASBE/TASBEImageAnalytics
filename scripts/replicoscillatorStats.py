@@ -397,14 +397,20 @@ def processImages(cfg, wellName, wellPath, images):
                     for i in range(len(currHist)):
                         totalHist[i] += currHist[i]
 
-        threshMethod = "Otsu" # Default works very poorly for this data
-        if cfg.hasValue(ELMConfig.thresholdMethod):
-            threshMethod = cfg.getValue(ELMConfig.thresholdMethod)
-        thresholder = AutoThresholder()
-        computedThresh = thresholder.getThreshold(threshMethod, totalHist)
-        cfg.setValue(ELMConfig.imageThreshold, computedThresh)
-        print("\tComputed threshold from total hist (" + threshMethod + "): " + str(computedThresh))
-        print()
+        
+        if cfg.hasValue(ELMConfig.thresholdFromWholeRange) and cfg.getValue(ELMConfig.thresholdFromWholeRange) == True:
+            threshMethod = "Otsu" # Default works very poorly for this data
+            if cfg.hasValue(ELMConfig.thresholdMethod):
+                threshMethod = cfg.getValue(ELMConfig.thresholdMethod)
+            thresholder = AutoThresholder()
+            computedThresh = thresholder.getThreshold(threshMethod, totalHist)
+            cfg.setValue(ELMConfig.imageThreshold, computedThresh)
+            print("\tComputed threshold from total hist (" + threshMethod + "): " + str(computedThresh))
+            print()
+        else:
+            print("\tUsing threshold computed on individual images!")
+            print()
+            computedThresh = -1
         
         chanName = cfg.getValue(ELMConfig.chanLabel)[c]
         
