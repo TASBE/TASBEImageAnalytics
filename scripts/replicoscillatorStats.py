@@ -457,19 +457,20 @@ def processImages(cfg, wellName, wellPath, images):
         settings.detectorFactory = ThresholdDetectorFactory()
         settings.detectorSettings = {
             'THRESHOLD' : computedThresh,
+            'ABOVE' : True,
             'DEBUG_MODE' : True,
             'DEBUG_OUTPATH' : dbgPath
         }
         
-        settings.detectorFactory = LocalThresholdDetectorFactory()
-        settings.detectorSettings = {
-            'THRESHOLD' : computedThresh,
-            'DEBUG_MODE' : True,
-            'DEBUG_OUTPATH' : dbgPath
-        }
+        #settings.detectorFactory = LocalThresholdDetectorFactory()
+        #settings.detectorSettings = {
+        #    'THRESHOLD' : computedThresh,
+        #    'DEBUG_MODE' : True,
+        #    'DEBUG_OUTPATH' : dbgPath
+        #}
         
         # Configure spot filters - Classical filter on quality
-        filter1 = FeatureFilter('QUALITY', 50, True)
+        filter1 = FeatureFilter('QUALITY', 150, True)
         settings.addSpotFilter(filter1)
         
         # Configure tracker - We want to allow merges and fusions
@@ -477,12 +478,12 @@ def processImages(cfg, wellName, wellPath, images):
         settings.trackerSettings = LAPUtils.getDefaultLAPSettingsMap() # almost good enough
         
         # Linking
-        settings.trackerSettings[TrackerKeys.KEY_LINKING_MAX_DISTANCE] = 120.0; # in pixels
+        settings.trackerSettings[TrackerKeys.KEY_LINKING_MAX_DISTANCE] = 220.0; # in pixels
         
         linkFeaturePenalties = HashMap();
         linkFeaturePenalties['Area'] = 1.0
-        linkFeaturePenalties['Circ.'] = 1.0
-        linkFeaturePenalties['Mean'] = 1.0
+        #linkFeaturePenalties['Circ.'] = 1.0
+        #linkFeaturePenalties['Mean'] = 1.0
          
         settings.trackerSettings[TrackerKeys.KEY_LINKING_FEATURE_PENALTIES] = linkFeaturePenalties;
         # Gap closing
@@ -495,7 +496,7 @@ def processImages(cfg, wellName, wellPath, images):
         settings.trackerSettings[TrackerKeys.KEY_SPLITTING_MAX_DISTANCE] =  45.0; # in pixels
         #settings.trackerSettings[TrackerKeys.KEY_SPLITTING_FEATURE_PENALTIES] =  new HashMap<>(DEFAULT_SPLITTING_FEATURE_PENALTIES));
         # Track merging
-        settings.trackerSettings[TrackerKeys.KEY_ALLOW_TRACK_MERGING] =  False;
+        settings.trackerSettings[TrackerKeys.KEY_ALLOW_TRACK_MERGING] =  True;
         settings.trackerSettings[TrackerKeys.KEY_MERGING_MAX_DISTANCE] =  45.0; # in pixels
         #settings.trackerSettings[TrackerKeys.KEY_MERGING_FEATURE_PENALTIES] =  new HashMap<>(DEFAULT_MERGING_FEATURE_PENALTIES));
         # Others
@@ -521,6 +522,8 @@ def processImages(cfg, wellName, wellPath, images):
         
         # Configure track filters - We want to get rid of the two immobile spots at
         # the bottom right of the image. Track displacement must be above 10 pixels.
+        #filter2 = FeatureFilter('TRACK_DISPLACEMENT', 1, True)
+        #settings.addTrackFilter(filter2)
         #filter2 = FeatureFilter('TRACK_DISPLACEMENT', 1, True)
         #settings.addTrackFilter(filter2)
         
