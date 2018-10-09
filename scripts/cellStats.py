@@ -494,7 +494,7 @@ def processImages(cfg, wellName, wellPath, images):
 
                 # We need to get to a grayscale image, which will be done differently for different channels
                 startTime = time.time()
-                currIP = ELMImageUtils.getGrayScaleImage(currIP, c, z, t, chanName, cfg, outputPath, dbgOutDesc)
+                currIP = ELMImageUtils.getThresholdedMask(currIP, c, z, t, chanName, cfg, outputPath, dbgOutDesc)
                 endTime = time.time()
                 if not 'grayscale' in times:
                     times['grayscale'] = []
