@@ -375,18 +375,21 @@ def processImages(cfg, wellName, wellPath, images):
     imgHeight = firstImage.getHeight();
     
     for c in range(0, cfg.getValue(ELMConfig.numChannels)):
+        chanName = cfg.getValue(ELMConfig.chanLabel)[c]
+            
         if cfg.getValue(ELMConfig.chanLabel)[c] in cfg.getValue(ELMConfig.chansToSkip):
             continue;
-
+        imColorSeq = ImageStack(imgWidth, imgHeight)
         imSeq = ImageStack(imgWidth, imgHeight)
         totalHist = []
         for z in range(0, cfg.getValue(ELMConfig.numZ)):
             for t in range(0, cfg.getValue(ELMConfig.numT)):
+                
                 currIP = IJ.openImage(images[c][z][t][0])
-                imgType = currIP.getType()
-                if not imgType == ImagePlus.GRAY8: 
-                    toGray = ImageConverter(currIP)
-                    toGray.convertToGray8()
+                imColorSeq.addSlice(currIP.duplicate().getProcessor())
+                
+                currIP = ELMImageUtils.getGrayScaleImage(currIP, c, chanName, cfg)
+                
                 imSeq.addSlice(currIP.getProcessor());
                 imgStats = currIP.getStatistics()
                 currHist = imgStats.getHistogram()
