@@ -561,7 +561,8 @@ def processImages(cfg, wellName, wellPath, images):
             trackSpots = model.getTrackModel().trackSpots(tId)
             for spot in trackSpots:
                 spot.setName(str(tId))
-        
+
+
         selectionModel = SelectionModel(model)
         displayer =  HyperStackDisplayer(model, selectionModel, impColor)
         displayer.setDisplaySettings(TrackMateModelView.KEY_TRACK_COLORING, PerTrackFeatureColorGenerator(model, TrackIndexAnalyzer.TRACK_INDEX ))
@@ -572,16 +573,11 @@ def processImages(cfg, wellName, wellPath, images):
         displayer.render()
         displayer.refresh()
         
-        # Echo results with the logger we set at start:
-        model.getLogger().log(str(model))
-        
-        # The feature model, that stores edge and track features.
-        fm = model.getFeatureModel()
-        
         trackmate.getSettings().imp = impColor
         coa = CaptureOverlayAction(None)
         coa.execute(trackmate)
         
+        WindowManager.setTempCurrentImage(coa.getCapture());
         IJ.saveAs('avi', os.path.join(wellPath, chanName + "_out.avi"))
 
         imp.close()
@@ -591,6 +587,12 @@ def processImages(cfg, wellName, wellPath, images):
         displayer.getImp().close()
         coa.getCapture().hide()
         coa.getCapture().close()
+
+        # Echo results with the logger we set at start:
+        model.getLogger().log(str(model))
+        
+        # The feature model, that stores edge and track features.
+        fm = model.getFeatureModel()
 
         # Write output for tracks
         numTracks = model.getTrackModel().trackIDs(True).size();
