@@ -1,4 +1,4 @@
-from ij import IJ, ImagePlus, ImageStack
+from ij import IJ, ImagePlus, ImageStack, WindowManager
 from ij.process import ImageConverter, AutoThresholder
 
 from fiji.plugin.trackmate import Model, Settings, TrackMate, SelectionModel, Logger
@@ -286,6 +286,7 @@ def main(cfg):
         cfg.printCfg()
         start = time.time()
         trackDat[wellName] = processDataset(cfg, wellName, dsImgFiles)
+        IJ.run("Garbage Collect")
         end = time.time()
         print("Processed well " + wellName + " in " + str(end - start) + " s")
         print("\n\n")
@@ -668,6 +669,10 @@ def processImages(cfg, wellName, wellPath, images):
         for track in trackDat:
             trackFile.write(','.join(trackDat[track]) + '\n')
         trackFile.close()
+        
+    model.clearSpots(True)
+    model.clearTracks(True)
+        
     return trackDat
 
 ####
