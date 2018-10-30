@@ -483,6 +483,8 @@ def processImages(cfg, wellName, wellPath, images):
         
         linkFeaturePenalties = HashMap();
         linkFeaturePenalties['Area'] = 1.0
+        linkFeaturePenalties['X'] = 1.0
+        linkFeaturePenalties['Y'] = 1.0
         #linkFeaturePenalties['Circ.'] = 1.0
         #linkFeaturePenalties['Mean'] = 1.0
          
