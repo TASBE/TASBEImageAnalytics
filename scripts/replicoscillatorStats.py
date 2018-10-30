@@ -562,7 +562,80 @@ def processImages(cfg, wellName, wellPath, images):
             trackSpots = model.getTrackModel().trackSpots(tId)
             for spot in trackSpots:
                 spot.setName(str(tId))
-
+                
+        # Determine sub-tracks within a track
+        # Since tracks can merge, we want to keep track of which track a spot is
+        # in prior to the merge
+        spotToSubTrackMap = {}
+        spotIt = model.getSpots().iterator(False)
+        trackModel = model.getTrackModel()
+        subTrackCount = {}
+        while spotIt.hasNext():
+            spot = spotIt.next();
+            spotEdges = trackModel.edgesOf(spot);
+            # Find merge points within a track: ignore spots with fewer than 2 edges
+            if (len(spotEdges) < 2):
+                continue
+            
+            # We have a merge if we have multiple incoming edges
+            incomingEdges = 0
+            edgeIt = spotEdges.iterator()
+            ancestorSpots = []
+            while edgeIt.hasNext():
+                edge = edgeIt.next()
+                src = trackModel.getEdgeSource(edge)
+                dst = trackModel.getEdgeTarget(edge)
+                if dst.ID() == spot.ID():
+                    ancestorSpots.append(src)
+                    incomingEdges += 1
+            # Ignore non-merges
+            if incomingEdges < 2:
+                continue
+            
+            trackId = trackModel.trackIDOf(spot)
+            if trackId in subTrackCount:
+                subTrackId = subTrackCount[trackId]
+            else:
+                subTrackId = 1
+            for ancestorSpot in ancestorSpots:
+                labelSubTrackAncestors(trackModel, spotToSubTrackMap, ancestorSpot, subTrackId, trackId, False)
+                subTrackId += 1
+            subTrackCount[trackId] = subTrackId
+        
+        # Spots after the last merge still need to be labeled
+        for tId in trackModel.trackIDs(True):
+            trackSpots = trackModel.trackSpots(tId)
+            spotIt = trackSpots.iterator();
+            lastSpot = None
+            while spotIt.hasNext():
+                spot = spotIt.next()
+                outgoingEdges = 0
+                spotEdges = trackModel.edgesOf(spot);
+                edgeIt = spotEdges.iterator()
+                while edgeIt.hasNext():
+                    edge = edgeIt.next()
+                    src = trackModel.getEdgeSource(edge)
+                    dst = trackModel.getEdgeTarget(edge)
+                    if src.ID() == spot.ID():
+                        outgoingEdges += 1
+                if outgoingEdges == 0 and len(spotEdges) > 0:
+                    lastSpot = spot
+                
+            if tId in subTrackCount:
+                subTrackId = subTrackCount[tId]
+            else:
+                subTrackId = 1
+            if not lastSpot == None:
+                labelSubTrackAncestors(trackModel, spotToSubTrackMap, lastSpot, subTrackId, tId, True)    
+        
+        # Create output file
+        trackOut = os.path.join(wellPath, chanName + "_spotToTrackMap.csv")
+        trackFile = open(trackOut, 'w')
+        # Fetch the track feature from the feature model.
+        trackFile.write('Spot Id, Track Sub Id, Track Id, Frame \n')
+        for spotId in spotToSubTrackMap:
+            trackFile.write(str(spotId) + ', ' + ','.join(spotToSubTrackMap[spotId]) + '\n')
+        trackFile.close()
 
         selectionModel = SelectionModel(model)
         displayer =  HyperStackDisplayer(model, selectionModel, impColor)
@@ -611,7 +684,7 @@ def processImages(cfg, wellName, wellPath, images):
             trackFile = open(trackOut, 'w')
 
             # Write Header
-            header = 'Frame, '
+            header = 'Name, ID, Frame, '
             for feature in track.toArray()[0].getFeatures().keySet():
                 if feature == 'Frame':
                     continue;
@@ -623,7 +696,7 @@ def processImages(cfg, wellName, wellPath, images):
             avgTotalIntensity = 0
             for spot in track:
                 #print spot.echo()
-                data = [str(spot.getFeature('FRAME'))]
+                data = [spot.getName(), str(spot.ID()), str(spot.getFeature('FRAME'))]
                 for feature in spot.getFeatures():
                     if feature == 'Frame':
                         continue;
@@ -674,6 +747,34 @@ def processImages(cfg, wellName, wellPath, images):
     model.clearTracks(True)
         
     return trackDat
+
+
+####
+#
+#
+####
+def labelSubTrackAncestors(trackModel, spotToSubTrackMap, spot, subTrackId, trackId, lastSpot):
+    if spot.ID() in spotToSubTrackMap:
+        if lastSpot:
+            print("Warning! Adding last Spot " + str(spot.ID()) + ' to spotToSubTrackMap, but it is already entered!')
+        else:
+            print("Warning! Adding Spot " + str(spot.ID()) + ' to spotToSubTrackMap, but it is already entered!')
+        
+    spotToSubTrackMap[spot.ID()] = [str(subTrackId), str(trackId), str(spot.getFeature('FRAME'))]
+    
+    spotEdges = trackModel.edgesOf(spot);
+    # Stop labeling at merges
+    if (len(spotEdges) > 2):
+        return
+    
+    edgeIt = spotEdges.iterator()
+    while edgeIt.hasNext():
+        edge = edgeIt.next()
+        src = trackModel.getEdgeSource(edge)
+        dst = trackModel.getEdgeTarget(edge)
+        if dst.ID() == spot.ID():
+            labelSubTrackAncestors(trackModel, spotToSubTrackMap, src, subTrackId, trackId, lastSpot)
+    
 
 ####
 #
