@@ -103,7 +103,7 @@ class ConfigParams:
         self.params[imgType] = "tif"
         self.params[numChannels] = 4;
         self.params[numZ] = 1;
-        self.params[numT] = 1;
+        #self.params[numT] = 1;
         self.params[minT] = 0;
         self.params[noZInFile] = True;
         self.params[noTInFile] = True;

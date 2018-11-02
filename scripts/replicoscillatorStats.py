@@ -125,6 +125,8 @@ def main(cfg):
     numZ = dict()
     pngTimesteps = dict()
     pngZSlices = dict()
+    
+    manualNumT = cfg.hasValue(ELMConfig.numT)
 
     # Analyze image filenames to get different pieces of information
     # We care about a time, Z, channel, and the well name
@@ -262,7 +264,7 @@ def main(cfg):
                 continue;
             cfg.updateCfgWithXML(xmlFile)
 
-        if wellName in maxT:
+        if wellName in maxT and not manualNumT:
             cfg.setValue(ELMConfig.numT, maxT[wellName] - minT[wellName] + 1)
         if wellName in minT:
             cfg.setValue(ELMConfig.minT, minT[wellName])
@@ -347,6 +349,9 @@ def processDataset(cfg, datasetName, imgFiles):
         for imgPath in imgFiles:
             fileName = os.path.basename(imgPath)
             c,z,t = cfg.getCZTFromFilename(fileName)
+            # Ignore files if they are past some manual configuration
+            if (t >= cfg.getValue(ELMConfig.numT)):
+                continue;
             imgFileCats[c][z][t].append(imgPath)
             if (len(imgFileCats[c][z][t]) > 1):
                 print "ERROR: More than one image for c,z,t: " + str(c) + ", " + str(z) + ", "+ str(t)
