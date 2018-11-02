@@ -1,5 +1,6 @@
 from ij import IJ, ImagePlus, ImageStack, WindowManager
 from ij.process import ImageConverter, AutoThresholder
+from fiji.plugin.trackmate.io import TmXmlWriter
 
 from fiji.plugin.trackmate import Model, Settings, TrackMate, SelectionModel, Logger
 from fiji.plugin.trackmate.detection import ThresholdDetectorFactory, LocalThresholdDetectorFactory
@@ -25,6 +26,7 @@ import fiji.plugin.trackmate.tracking.TrackerKeys as TrackerKeys
 import os, glob, re, time, sys
 
 from java.awt import Color
+from java.io import File
 
 # I'm not certain why, but when run in ImageJ it doesn't seem to adhere to the CLASSPATH env variable
 # This ensures that CLASSPATH is explicitly on the module search path, which is required for ELMConfig to resolve
@@ -638,6 +640,23 @@ def processImages(cfg, wellName, wellPath, images):
         for spotId in spotToSubTrackMap:
             trackFile.write(str(spotId) + ', ' + ','.join(spotToSubTrackMap[spotId]) + '\n')
         trackFile.close()
+        
+        # Write Edge Set
+        trackOut = os.path.join(wellPath, chanName + "_mergeEdgeSet.csv")
+        trackFile = open(trackOut, 'w')
+        trackFile.write('Track Id, Spot Id, Spot Id \n')
+        edgeIt = trackModel.edgeSet().iterator()
+        while edgeIt.hasNext():
+            edge = edgeIt.next()
+            src = trackModel.getEdgeSource(edge)
+            dst = trackModel.getEdgeTarget(edge)
+            trackId = trackModel.trackIDOf(edge)
+            srcSubTrack = spotToSubTrackMap[src.ID()][0]
+            dstSubTrack = spotToSubTrackMap[dst.ID()][0]
+            if not srcSubTrack == dstSubTrack:
+                trackFile.write(str(trackId) + ', ' + str(src.ID()) + ', ' + str(dst.ID()) + '\n')
+        trackFile.close()
+
 
         selectionModel = SelectionModel(model)
         displayer =  HyperStackDisplayer(model, selectionModel, impColor)
@@ -744,6 +763,15 @@ def processImages(cfg, wellName, wellPath, images):
         for track in trackDat:
             trackFile.write(','.join(trackDat[track]) + '\n')
         trackFile.close()
+    
+        trackOut = os.path.join(wellPath, chanName + "_trackModel.xml")
+        trackFile = File(trackOut)
+        writer = TmXmlWriter(trackFile, model.getLogger() );
+        #writer.appendLog( logPanel.getTextContent() );
+        writer.appendModel( trackmate.getModel() );
+        writer.appendSettings( trackmate.getSettings() );
+        #writer.appendGUIState( controller.getGuimodel() );
+        writer.writeToFile();
         
     model.clearSpots(True)
     model.clearTracks(True)
