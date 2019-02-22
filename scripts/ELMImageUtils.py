@@ -77,8 +77,7 @@ def getGrayScaleImage(currIP, c, chanName, cfg):
             currIP.close()
             return None
     elif imgType == ImagePlus.GRAY16 or imgType == ImagePlus.GRAY32 or imgType == ImagePlus.GRAY8:
-       
-        if not imgType == ImagePlus.GRAY8: 
+        if not imgType == ImagePlus.GRAY8:
             toGray = ImageConverter(currIP)
             toGray.convertToGray8()
     else:
@@ -205,7 +204,7 @@ def getThresholdedMask(currIP, c, z, t, chanName, cfg, wellPath, dbgOutDesc):
     
         currIP.getProcessor().setAutoThreshold(threshMethod, darkBackground, ImageProcessor.NO_LUT_UPDATE)
         threshRange = currIP.getProcessor().getMaxThreshold() - currIP.getProcessor().getMinThreshold()
-        print "\t\tZ = " + str(z) + ", T = " + str(t) +  ", chan " + chanName + ": Using default threshold of minThresh: " + str(currIP.getProcessor().getMinThreshold()) + ", maxThresh: " + str(currIP.getProcessor().getMaxThreshold())
+        #print "\t\tZ = " + str(z) + ", T = " + str(t) +  ", chan " + chanName + ": Using default threshold of minThresh: " + str(currIP.getProcessor().getMinThreshold()) + ", maxThresh: " + str(currIP.getProcessor().getMaxThreshold())
         if currIP.getType() != ImagePlus.GRAY8:
             print "\tChannel " + chanName + " is not GRAY8, instead type is %d" % currIP.getType()
         if threshRange > cfg.getValue(ELMConfig.maxThreshRange):
