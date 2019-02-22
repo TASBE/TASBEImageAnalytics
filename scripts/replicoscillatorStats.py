@@ -398,7 +398,7 @@ def processImages(cfg, wellName, wellPath, images):
                 currIP = IJ.openImage(images[c][z][t][0])
                 imColorSeq.addSlice(currIP.duplicate().getProcessor())
                 
-                currIP = ELMImageUtils.getGrayScaleImage(currIP, c, chanName, cfg)
+                #currIP = ELMImageUtils.getGrayScaleImage(currIP, c, chanName, cfg)
                 
                 imSeq.addSlice(currIP.getProcessor());
                 imgStats = currIP.getStatistics()
@@ -423,7 +423,7 @@ def processImages(cfg, wellName, wellPath, images):
         else:
             print("\tUsing threshold computed on individual images!")
             print()
-            computedThresh = -1
+            computedThresh = 0
         
         chanName = cfg.getValue(ELMConfig.chanLabel)[c]
         
@@ -461,13 +461,19 @@ def processImages(cfg, wellName, wellPath, images):
         if not os.path.exists(dbgPath):
             os.makedirs(dbgPath)
         
+        if cfg.hasValue(ELMConfig.thresholdMethod):
+            threshMethod = cfg.getValue(ELMConfig.thresholdMethod)
+        else:
+            threshMethod = "Default"
+            
         # Configure detector - We use the Strings for the keys
         settings.detectorFactory = ThresholdDetectorFactory()
         settings.detectorSettings = {
             'THRESHOLD' : computedThresh,
             'ABOVE' : True,
             'DEBUG_MODE' : True,
-            'DEBUG_OUTPATH' : dbgPath
+            'DEBUG_OUTPATH' : dbgPath,
+            'THRESHOLD_METHOD' : threshMethod
         }
         
         #settings.detectorFactory = LocalThresholdDetectorFactory()
