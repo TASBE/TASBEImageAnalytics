@@ -319,7 +319,7 @@ def processDataset(cfg, datasetName, imgFiles):
                 if cfg.getValue(ELMConfig.chanLabel)[c] in cfg.getValue(ELMConfig.chansToSkip):
                     continue;
                 if not imgFileCats[c][z][t]:
-                    print "ERROR: No image for c,z,t: " + str(c) + ", " + str(z) + ", "+ str(t)
+                    print "ERROR: No image for " + datasetName + " c,z,t: " + str(c) + ", " + str(z) + ", "+ str(t)
                     missingImage = True
     if missingImage:
         quit(-1)
