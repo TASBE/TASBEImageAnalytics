@@ -658,13 +658,16 @@ def processImages(cfg, wellName, wellPath, images):
                             roiY = int(stats[c][z][t]['BY'][row])
                             roiWidth = int(stats[c][z][t]['Width'][row])
                             roiHeight = int(stats[c][z][t]['Height'][row])
+                            area = stats[c][z][t]['Area'][row]
+                            halfRoiHeight = roiHeight/2 + 1
+                            halfRoiWidth = roiWidth/2 + 1  
                             # Since the centroid isn't guaranteed to be part of the blob
                             # search around until an active pixel is found
                             found = False
-                            for xOffset in range(0,roiWidth/2):
+                            for xOffset in range(0,halfRoiWidth):
                                 if found:
                                     break
-                                for yOffset in range(0, roiHeight/2):
+                                for yOffset in range(0, halfRoiHeight):
                                     if found:
                                         break
                                     for x in range(centX-xOffset,centX+xOffset+1):
@@ -679,7 +682,8 @@ def processImages(cfg, wellName, wellPath, images):
                                                 finalY = y
                                                 break
                             if not found:
-                                print "\t\tZ = " + str(z) + ", T = " + str(t) +  ", chan " + chanName + ": ERROR: Never found active pixel for seg mask, centroid: " + str(centX) + ", " + str(centY)
+                                print "\t\tZ = " + str(z) + ", T = " + str(t) +  ", chan " + chanName + ": ERROR: Never found active pixel for seg mask, centroid, roi, area (px): " \
+                                    + str(centX) + ", " + str(centY) + ", " + str(roiX) + ", " + str(roiY) + ", " + str(roiWidth) + ", " + str(roiHeight) + ", " + str(area)
                             else:
                                 segProcessor.setRoi(roiX, roiY, roiWidth, roiHeight)
                                 segProcessor.setColor(row + 1)
