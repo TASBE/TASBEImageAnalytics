@@ -1,3 +1,12 @@
+# Copyright (C) 2011 - 2019, Raytheon BBN Technologies and contributors listed
+# in the AUTHORS file in TASBE Flow Analytics distribution's top directory.
+#
+# This file is part of the TASBE Flow Analytics package, and is distributed
+# under the terms of the GNU General Public License, with a linking
+# exception, as described in the file LICENSE in the TASBE Image Analysis
+# package distribution's top directory.
+
+
 #Recognized colors
 RED = "Red"
 GREEN = "Green"
