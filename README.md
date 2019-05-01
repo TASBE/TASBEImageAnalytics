@@ -1,4 +1,4 @@
-# [TASBE Image Analytics]
+# TASBE Image Analytics
 
 TASBE Image Analytics is an image processing pipeline leveraging ImageJ for analysis of microscopy images.
 It was designed for detecting and tracking cells in fluorescent images for the purposes of quantify the shape of cell balls.
