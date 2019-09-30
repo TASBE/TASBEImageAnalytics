@@ -2,8 +2,10 @@
 .pydevproject
 *.log
 .cproject
+.classpath
 .settings/
 build/
 *.ply
 testLN
 ndtLink
+/bin/
