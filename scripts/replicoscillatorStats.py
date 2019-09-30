@@ -10,8 +10,11 @@ from ij import IJ, ImagePlus, ImageStack, WindowManager
 from ij.process import ImageConverter, AutoThresholder
 from fiji.plugin.trackmate.io import TmXmlWriter
 
-from fiji.plugin.trackmate import Model, Settings, TrackMate, SelectionModel, Logger
-from fiji.plugin.trackmate.detection import ThresholdDetectorFactory, LocalThresholdDetectorFactory
+from fiji.plugin.trackmate import Model, Settings, TrackMate, SelectionModel, Logger, Dimension
+
+from plugin.trackmate.detector import ThresholdDetectorFactory
+#from plugin.trackmate.detector import LocalThresholdDetectorFactory
+
 from fiji.plugin.trackmate.tracking.sparselap import SparseLAPTrackerFactory
 from fiji.plugin.trackmate.tracking import LAPUtils
 
@@ -458,6 +461,27 @@ def processImages(cfg, wellName, wellPath, images):
         # Send all messages to ImageJ log window.
         model.setLogger(Logger.IJ_LOGGER)
         
+        pa_features = ["Area", "PercentArea", "Mean", "StdDev", "Mode", "Min",
+                                      "Max", "X", "Y", "XM", "YM", "Perim.",
+                                      "BX", "BY", "Width", "Height", "Major",
+                                      "Minor", "Angle", "Circ.", "Feret",
+                                      "IntDen", "Median", "Skew", "Kurt",
+                                      "RawIntDen", "FeretX", "FeretY",
+                                      "FeretAngle", "MinFeret", "AR",
+                                      "Round", "Solidity"]
+
+        featureNames = {}
+        featureShortNames = {}
+        featureDimensions = {};
+        isInt = {};
+        for feature in pa_features:
+            featureNames[feature] = feature
+            featureShortNames[feature] = feature
+            featureDimensions[feature] = Dimension.STRING
+            isInt[feature] = False
+
+        model.getFeatureModel().declareSpotFeatures(pa_features, featureNames, featureShortNames, featureDimensions, isInt)
+
         #------------------------
         # Prepare settings object
         #------------------------
@@ -465,7 +489,7 @@ def processImages(cfg, wellName, wellPath, images):
         settings = Settings()
         settings.setFrom(imp)
         
-        dbgPath = os.path.join(wellPath, 'debugImages')
+        dbgPath = os.path.join(wellPath, 'debugImages_' + chanName )
         if not os.path.exists(dbgPath):
             os.makedirs(dbgPath)
         
@@ -552,13 +576,14 @@ def processImages(cfg, wellName, wellPath, images):
         #settings.addTrackFilter(filter2)
         
         
-        print("Spot feature analyzers: " + settings.toStringFeatureAnalyzersInfo())
+        #print("Spot feature analyzers: " + settings.toStringFeatureAnalyzersInfo())
         
         #-------------------
         # Instantiate plugin
         #-------------------
         
         trackmate = TrackMate(model, settings)
+        trackmate.setNumThreads(1)
         
         #--------
         # Process
