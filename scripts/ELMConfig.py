@@ -354,6 +354,8 @@ class ConfigParams:
                 self.params[tIdx] = int(cfgParser.get(cfgSection, option))
             elif option == zIdx.lower():
                 self.params[zIdx] = int(cfgParser.get(cfgSection, option))
+            elif option == cIdx.lower():
+                self.params[cIdx] = int(cfgParser.get(cfgSection, option))
             elif option == pcloudColorThresh.lower():
                 self.params[pcloudColorThresh] = int(cfgParser.get(cfgSection, option))
             elif option == pcloudExclusionX.lower() or option == lowerRightExclusionX.lower():
