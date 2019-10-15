@@ -151,6 +151,9 @@ def main(cfg):
         if cfg.getValue(ELMConfig.wellNames):
             if not wellName in cfg.getValue(ELMConfig.wellNames):
                 continue;
+        if cfg.getValue(ELMConfig.excludeWellNames):
+            if any(wellName in name for name in cfg.getValue(ELMConfig.excludeWellNames)):
+                continue;
 
         dsImgFiles = [];
         for i in range(0, len(imgFiles)) :
