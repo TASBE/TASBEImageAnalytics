@@ -74,9 +74,9 @@ bool MicroscopeProperties::readFromINI(const std::string & propINIPath) {
 				this->pixelWidth = atof(key.second.get_value<std::string>().c_str());
 			} else if (key.first.compare(INI_PIXEL_DEPTH) == 0) {
 				this->pixelDepth = atof(key.second.get_value<std::string>().c_str());
-			} else if (key.first.compare(INI_PIXEL_HEIGHT) == 0) {
+			} else if (key.first.compare(INI_IMAGE_HEIGHT) == 0) {
 				this->imageHeight = atof(key.second.get_value<std::string>().c_str());
-			} else if (key.first.compare(INI_PIXEL_HEIGHT) == 0) {
+			} else if (key.first.compare(INI_IMAGE_HEIGHT) == 0) {
 				this->imageWidth = atof(key.second.get_value<std::string>().c_str());
 			}
 		}
