@@ -19,9 +19,19 @@ struct MicroscopeProperties {
 	double imageWidth;
 	double imageHeight;
 
+	static const std::string INI_CFG_SECTION;
+
+	static const std::string INI_PIXEL_WIDTH;
+	static const std::string INI_PIXEL_HEIGHT;
+	static const std::string INI_PIXEL_DEPTH;
+	static const std::string INI_IMAGE_WIDTH;
+	static const std::string INI_IMAGE_HEIGHT;
+
 	std::string fileName;
 
 	bool readFromXML(const std::string & propXMLPath);
+
+	bool readFromINI(const std::string & propINIPath);
 
 	friend std::ostream& operator << (std::ostream& os, const MicroscopeProperties& p) {
 		os << "Microscope properties for " << p.fileName << std::endl;

@@ -248,6 +248,14 @@ std::vector<PointIndices> segment(CloudPtr cloud,
 	return cluster_indices;
 }
 
+/**
+ * From https://stackoverflow.com/questions/20446201/how-to-check-if-string-ends-with-txt/20446257
+ */
+bool has_suffix(const std::string &str, const std::string &suffix)
+{
+    return str.size() >= suffix.size() &&
+           str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
+}
 
 /**
  *
@@ -296,10 +304,19 @@ int main(const int argc, const char **argv) {
 	}
 
 	MicroscopeProperties scopeProps;
-	if (!scopeProps.readFromXML(
-			segParams.getValue(SegParams::SCOPE_PROPERTIES))) {
-		cout << "Failed loading microscope properties!" << endl;
-		return 0;
+	string scopePropsFile = segParams.getValue(SegParams::SCOPE_PROPERTIES);
+	if (has_suffix(scopePropsFile, ".ini")) {
+		if (!scopeProps.readFromINI(scopePropsFile)) {
+			cout << "Failed loading microscope ini properties! File: "
+					<< scopePropsFile << endl;
+			return 0;
+		}
+	} else {
+		if (!scopeProps.readFromXML(scopePropsFile)) {
+			cout << "Failed loading microscope xml properties! File: "
+					<< scopePropsFile << endl;
+			return 0;
+		}
 	}
 
 	cout << scopeProps << endl;
