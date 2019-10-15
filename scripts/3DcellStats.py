@@ -200,6 +200,7 @@ def processDataset(cfg, datasetName, imgFiles):
     for imgPath in imgFiles:
         fileName = os.path.basename(imgPath)
         c,z,t = cfg.getCZTFromFilename(fileName)
+        #print "c,z,t: " + str(c) + ", " + str(z) + ", "+ str(t)
         imgFileCats[c][z][t].append(imgPath)
         if (len(imgFileCats[c][z][t]) > 1):
             print "ERROR: More than one image for c,z,t: " + str(c) + ", " + str(z) + ", "+ str(t)
@@ -270,8 +271,10 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
             currProcessor = currIP.getProcessor()
             #WindowManager.setTempCurrentImage(currIP);
             #currIP.show()
-            for x in range(0, currIP.getWidth()) :
-                for y in range(0,currIP.getHeight()) :
+            imgWidth = currIP.getWidth()
+            imgHeight = currIP.getHeight()
+            for x in range(0, imgWidth) :
+                for y in range(0,imgHeight) :
                     if not currProcessor.get(x,y) == 0x00000000:
                         ptCount += 1
                         ptX = x * cfg.getValue(ELMConfig.pixelWidth)
@@ -320,7 +323,7 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
             resultsFile.write("%f %f %f %d %d %d\n" % (line[0], line[1], line[2], line[3], line[4], line[5]))
         resultsFile.close()
 
-        compute3DStats(cfg, wellPath, chanName, cloudName)
+        compute3DStats(cfg, wellPath, chanName, cloudName, imgWidth, imgHeight)
 
     print ""
 
@@ -329,7 +332,7 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
 #  Use the saved pointcloud to compute stats
 #
 ####    
-def compute3DStats(cfg, wellPath, chanName, cloudName):
+def compute3DStats(cfg, wellPath, chanName, cloudName, imageWidth, imageHeight):
     # Create SegParams INI file
     segIniPath = os.path.join(wellPath, chanName + "_segParams.ini")
     segIniFile = open(segIniPath, "w")
@@ -337,7 +340,17 @@ def compute3DStats(cfg, wellPath, chanName, cloudName):
     segIniFile.write("RunName=" + chanName + "Euc" + "\n")
     segIniFile.write("InputCloud=" + os.path.join(wellPath, cloudName) + "\n")
     segIniFile.write("OutputDir=" + os.path.join(wellPath, chanName + "Seg") + "\n")
-    segIniFile.write("MicroscopeProperties=" + cfg.getValue(ELMConfig.scopeProperties) + "\n")
+    if cfg.hasValue(ELMConfig.scopeProperties):
+        segIniFile.write("MicroscopeProperties=" + cfg.getValue(ELMConfig.scopeProperties) + "\n")
+    else:
+        with open(os.path.join(wellPath, 'scopeProperties.ini'), "w") as resultsFile:
+            resultsFile.write("[Config]\n")
+            resultsFile.write("pixelHeight=%f\n" % cfg.getValue(ELMConfig.pixelHeight))
+            resultsFile.write("pixelWidth=%f\n" % cfg.getValue(ELMConfig.pixelWidth))
+            resultsFile.write("pixelDepth=%f\n" % cfg.getValue(ELMConfig.pixelDepth))
+            resultsFile.write("imageHeight=%f\n" % imageHeight)
+            resultsFile.write("imageWidth=%f\n" % imageWidth)
+        segIniFile.write("MicroscopeProperties=" + os.path.join(wellPath, 'scopeProperties.ini') + "\n")
 
     segIniFile.write("[SegmentationParameters]\n")
     segIniFile.write("SegType=Euclidean\n")
