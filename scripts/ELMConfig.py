@@ -366,8 +366,10 @@ class ConfigParams:
                 self.params[pcloudColorThresh] = int(cfgParser.get(cfgSection, option))
             elif option == pcloudExclusionX.lower() or option == lowerRightExclusionX.lower():
                 self.params[lowerRightExclusionX] = int(cfgParser.get(cfgSection, option))
+                self.params[pcloudExclusionX] = int(cfgParser.get(cfgSection, option))
             elif option == pcloudExclusionY.lower() or option == lowerRightExclusionY.lower():
                 self.params[lowerRightExclusionY] = int(cfgParser.get(cfgSection, option))
+                self.params[pcloudExclusionY] = int(cfgParser.get(cfgSection, option))
             elif option == upperLeftExclusionX.lower():
                 self.params[upperLeftExclusionX] = int(cfgParser.get(cfgSection, option))
             elif option == upperLeftExclusionY.lower():
