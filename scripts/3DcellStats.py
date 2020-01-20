@@ -335,12 +335,12 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
 #  Use the saved pointcloud to compute stats
 #
 ####    
-def compute3DStats(cfg, wellPath, chanName, cloudName, imageWidth, imageHeight):
+def compute3DStats(cfg, wellPath, wellName, chanName, cloudName, imageWidth, imageHeight):
     # Create SegParams INI file
     segIniPath = os.path.join(wellPath, chanName + "_segParams.ini")
     segIniFile = open(segIniPath, "w")
     segIniFile.write("[InputParameters]\n")
-    segIniFile.write("RunName=" + chanName + "Euc" + "\n")
+    segIniFile.write("RunName=" + wellName + "_" + chanName + "Euc" + "\n")
     segIniFile.write("InputCloud=" + os.path.join(wellPath, cloudName) + "\n")
     segIniFile.write("OutputDir=" + os.path.join(wellPath, chanName + "Seg") + "\n")
     if cfg.hasValue(ELMConfig.scopeProperties):
