@@ -15,6 +15,7 @@ The first script is able to process a microscopy experiment and detect cell clus
 
 Examples of how these scripts can be found in [TASBEImageAnalytics-Tutorial](https://github.com/TASBE/TASBEImageAnalytics-Tutorial).
 
+## Build
 The point cloud creation process utilizes parts of the PCL library and requires source code to be build in C++.  The following commands can be used to build the C++ code if the propery dependencies are resolved:
 ```
 mkdir build
@@ -23,4 +24,6 @@ cmake ..
 make
 ```
 This requires CMake to be installed along with PCL.
+
+The tracking portion of `cellStatsTracking.py` uses TrackMate to do the tracking which is a standard plugin that comes with FIJI, however it utilizes a custom detector based on image thresholding.  The detector source code is included in the `TrackMate` directory and a jar file exists in `TrackMate/target`.  This jar file must be present in the plugins directory of the ImageJ installation used to run the script, otherwise tracking will fail.
 
