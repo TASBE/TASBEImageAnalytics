@@ -323,7 +323,10 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
             resultsFile.write("%f %f %f %d %d %d\n" % (line[0], line[1], line[2], line[3], line[4], line[5]))
         resultsFile.close()
 
-        compute3DStats(cfg, wellPath, chanName, cloudName, imgWidth, imgHeight)
+        if numPoints > 0:
+            compute3DStats(cfg, wellPath, wellName, chanName, cloudName, imgWidth, imgHeight)
+        else:
+            print('Well %s, channel %s (%s) - Skipping 3D stats since we have no points!' % (wellName, chanName, chanStr))
 
     print ""
 
