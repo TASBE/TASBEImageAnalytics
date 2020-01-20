@@ -277,9 +277,9 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
                 for y in range(0,imgHeight) :
                     if not currProcessor.get(x,y) == 0x00000000:
                         ptCount += 1
-                        ptX = x * cfg.getValue(ELMConfig.pixelWidth)
-                        ptY = y * cfg.getValue(ELMConfig.pixelHeight)
-                        ptZ = z * cfg.getValue(ELMConfig.pixelDepth);
+                        ptX =  x * cfg.getValue(ELMConfig.pixelWidth)
+                        ptY =  y * cfg.getValue(ELMConfig.pixelHeight)
+                        ptZ = -z * cfg.getValue(ELMConfig.pixelDepth);
                         colorPix = origImage.getPixel(x,y)
                         red   = colorPix[0]
                         green = colorPix[1]
