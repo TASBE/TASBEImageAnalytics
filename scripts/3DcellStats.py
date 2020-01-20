@@ -303,7 +303,7 @@ def processImages(cfg, wellName, wellPath, c, imgFiles):
     
         print "\t\tTotal points considered: " + str(ptCount)
         print "\t\tColor Threshold Skipped " + str(numColorThreshPts) + " points."
-        print "\t\tExclusion Zone  Skipped " + str(numExclusionPts) + " points."
+        print "\t\tExclusion Zone Skipped " + str(numExclusionPts) + " points."
     
         numPoints = len(points);
         cloudName = chanName + "_" + tStr + "_cloud.ply"
