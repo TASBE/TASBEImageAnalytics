@@ -409,7 +409,7 @@ def processImages(cfg, wellName, wellPath, images):
                 currIP = IJ.openImage(images[c][z][t][0])
                 imColorSeq.addSlice(currIP.duplicate().getProcessor())
                 
-                #currIP = ELMImageUtils.getGrayScaleImage(currIP, c, chanName, cfg)
+                currIP = ELMImageUtils.getGrayScaleImage(currIP, c, chanName, cfg)
                 
                 imSeq.addSlice(currIP.getProcessor());
                 imgStats = currIP.getStatistics()
@@ -528,8 +528,8 @@ def processImages(cfg, wellName, wellPath, images):
         
         linkFeaturePenalties = HashMap();
         linkFeaturePenalties['Area'] = 1.0
-        linkFeaturePenalties['X'] = 1.0
-        linkFeaturePenalties['Y'] = 1.0
+        linkFeaturePenalties['POSITION_X'] = 1.0
+        linkFeaturePenalties['POSITION_Y'] = 1.0
         #linkFeaturePenalties['Circ.'] = 1.0
         #linkFeaturePenalties['Mean'] = 1.0
          
