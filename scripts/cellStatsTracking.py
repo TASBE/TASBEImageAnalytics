@@ -301,7 +301,7 @@ def main(cfg):
         cfg.printCfg()
         start = time.time()
         trackDat[wellName] = processDataset(cfg, wellName, dsImgFiles)
-        IJ.run("Garbage Collect")
+        #IJ.run("Garbage Collect")
         end = time.time()
         print("Processed well " + wellName + " in " + str(end - start) + " s")
         print("\n\n")
